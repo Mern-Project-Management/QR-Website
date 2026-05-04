@@ -4,6 +4,30 @@ import { getAdminOrigin } from "@/lib/adminOrigin";
 
 const ADMIN_ORIGIN = getAdminOrigin();
 
+// Extend NextAuth types to include accessToken
+declare module "next-auth" {
+  interface User {
+    id?: string;
+    accessToken?: string | null;
+    role?: string;
+  }
+  interface Session {
+    accessToken?: string | null;
+    user?: {
+      id?: string;
+      role?: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+  interface JWT {
+    accessToken?: string | null;
+    role?: string;
+    id?: string;
+  }
+}
+
 type BackendAuthUser = {
   id?: string | number;
   name?: string;
@@ -148,18 +172,17 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
-        token.accessToken = (user as { accessToken?: string | null }).accessToken || null;
+        token.role = user.role;
+        token.accessToken = user.accessToken || null;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string }).id = token.id as string;
-        (session.user as { role?: string }).role = token.role as string;
-        (session as unknown as { accessToken?: string | null }).accessToken =
-          (token as unknown as { accessToken?: string | null }).accessToken || null;
+        session.user.id = token.id as string | undefined;
+        session.user.role = token.role as string | undefined;
       }
+      session.accessToken = (token.accessToken as string | null | undefined) || null;
       return session;
     },
   },

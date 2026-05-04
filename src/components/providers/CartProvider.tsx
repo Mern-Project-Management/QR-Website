@@ -52,7 +52,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     // Load from DB if user is logged in
     useEffect(() => {
         if (status === 'authenticated' && session?.user && !isDbLoaded) {
-            fetch(`/api/carts`, {
+            fetch(`/api/backend/carts`, {
                 method: "GET",
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
                 cache: "no-store",

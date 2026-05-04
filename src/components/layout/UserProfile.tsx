@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, ChevronDown, LogOut, Settings, ShoppingBag } from 'react-feather';
+import { User, ChevronDown, LogOut, ShoppingBag } from 'react-feather';
+import { LayoutDashboard } from 'lucide-react';
 
 type UserProfileProps = { variant?: 'default' | 'headerMobile' };
 
@@ -70,11 +71,11 @@ export default function UserProfile({ variant = 'default' }: UserProfileProps) {
                     <button
                         onClick={() => {
                             setIsOpen(false);
-                            router.push('/');
+                            router.push('/dashboard');
                         }}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
                     >
-                        <Settings size={14} />
+                        <LayoutDashboard size={14} />
                         <span>Dashboard</span>
                     </button>
 
