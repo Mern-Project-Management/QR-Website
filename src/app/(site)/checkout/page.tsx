@@ -192,9 +192,13 @@ export default function CheckoutPage() {
 
   const fetchUserAddresses = async () => {
     try {
-      const res = await fetch('/api/backend/user/address');
+      const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
+      const res = await fetch('/api/backend/customer/address', {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
       if (res.ok) {
-        const addresses = await res.json();
+        const result = await res.json();
+        const addresses = Array.isArray(result) ? result : (result?.data || []);
         setSavedAddresses(addresses);
         if (addresses.length > 0) {
           applyAddress(addresses[0]);
@@ -324,9 +328,13 @@ export default function CheckoutPage() {
           ...(checkoutSessionId ? { checkoutSessionId } : {}),
         };
 
+        const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
         const orderRes = await fetch('/api/razorpay/order', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
           body: JSON.stringify(payload),
         });
 
@@ -374,9 +382,13 @@ export default function CheckoutPage() {
           theme: { color: '#1e3a8a' },
           handler: async function (response: RazorpayPaymentSuccessResponse) {
             try {
+              const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
               const verifyRes = await fetch('/api/razorpay/verify', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                },
                 body: JSON.stringify({
                   localOrderId,
                   razorpay_order_id: response.razorpay_order_id,
@@ -449,9 +461,13 @@ export default function CheckoutPage() {
 
   const completeOrder = async (address: ShippingAddress, method: string) => {
     try {
+      const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
       const res = await fetch('/api/backend/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
           customerId: (session?.user as { id?: string })?.id || null,
           items: cartItems,
@@ -487,8 +503,9 @@ export default function CheckoutPage() {
     }
   };
 
-  const isNewAddress = selectedAddressId === 'new' || savedAddresses.length === 0;
-  const selectedSaved = savedAddresses.find(a => a.id === selectedAddressId);
+  const safeSavedAddresses = Array.isArray(savedAddresses) ? savedAddresses : [];
+  const isNewAddress = selectedAddressId === 'new' || safeSavedAddresses.length === 0;
+  const selectedSaved = safeSavedAddresses.find(a => a.id === selectedAddressId);
 
   if (status === 'loading') {
     return (
@@ -608,7 +625,7 @@ export default function CheckoutPage() {
                     <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 border-b pb-2 border-gray-100">Delivery Address</h4>
 
                     {/* ── Saved addresses dropdown ── */}
-                    {savedAddresses.length > 0 && (
+                    {safeSavedAddresses.length > 0 && (
                       <div className="mb-5" ref={savedAddrDropdownRef}>
                         <label className="text-sm font-medium text-gray-700 block mb-1.5">Saved Addresses</label>
                         <div className="relative">
@@ -639,7 +656,7 @@ export default function CheckoutPage() {
                           {/* Dropdown list */}
                           {savedAddrDropdownOpen && (
                             <div className="absolute z-40 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
-                              {savedAddresses.map((addr) => (
+                              {safeSavedAddresses.map((addr) => (
                                 <button
                                   key={addr.id}
                                   type="button"

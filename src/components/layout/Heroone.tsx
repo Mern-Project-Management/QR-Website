@@ -81,8 +81,8 @@ export default function HeroOne() {
     badge: "Online program is now available",
     title: "Empowering <span className='text-brand-primary'>Superior</span> results by thinking",
     subtitle: "When you join our journey, you are choosing a partner who believes in a healthier, more balanced you — and works tirelessly to help you get there.",
-    primary_button_text: "Get Free Digital QR",
-    primary_button_href: "/pricing",
+    primary_button_text: "",
+    primary_button_href: "",
     secondary_button_text: "Buy Now",
     secondary_button_href: "/about",
     stats_text: "7.65m+",
@@ -172,7 +172,7 @@ export default function HeroOne() {
                   padding="py-3.5 px-5 sm:py-4 sm:px-6"
                   className="w-full !rounded-full text-center text-[15px] font-semibold tracking-tight shadow-md sm:w-auto sm:!rounded-xl sm:text-base"
                 />
-                <Button
+                {/* <Button
                   href={content.primary_button_href?.startsWith('/')
                     ? content.primary_button_href
                     : `/${content.primary_button_href}` || fallbackContent.primary_button_href}
@@ -182,7 +182,7 @@ export default function HeroOne() {
                   textColor="text-white"
                   padding="py-3.5 px-5 sm:py-4 sm:px-6"
                   className="w-full !rounded-full text-center text-[15px] font-semibold tracking-tight shadow-md sm:w-auto sm:!rounded-xl sm:text-base"
-                />
+                /> */}
               </div>
 
               {/* Decorative Image */}
