@@ -26,6 +26,7 @@ import {
 } from "react-feather";
 import { QrCode, Car, Scan } from "lucide-react";
 import { createPortal } from "react-dom";
+import { getAdminOrigin } from "@/lib/adminOrigin";
 
 // Types
 interface EmergencyContact {
@@ -134,11 +135,26 @@ const getCategoryColor = (category: string) => {
   }
 };
 
+const ADMIN_ORIGIN = getAdminOrigin();
+
 const getStatusStyles = (status?: string | null, isActive?: boolean) => {
   const s = (status || "").toUpperCase();
   if (!isActive) return "bg-gray-50 text-gray-500 border-gray-200";
   if (s === "ACTIVE") return "bg-green-50 text-green-700 border-green-200";
   return "bg-amber-50 text-amber-700 border-amber-200";
+};
+
+const resolveScanUrl = (scanUrl: string): string => {
+  try {
+    const url = new URL(scanUrl);
+    const adminUrl = new URL(ADMIN_ORIGIN);
+    url.protocol = adminUrl.protocol;
+    url.hostname = adminUrl.hostname;
+    url.port = adminUrl.port;
+    return url.toString();
+  } catch {
+    return scanUrl;
+  }
 };
 
 export default function DashboardPage() {
@@ -508,20 +524,20 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={qr.scanUrl}
+                        value={resolveScanUrl(qr.scanUrl)}
                         readOnly
                         className="flex-1 text-sm text-gray-600 bg-transparent border-none outline-none truncate"
                       />
                       <button
                         type="button"
-                        onClick={() => handleCopyUrl(qr.scanUrl, qr.id)}
+                        onClick={() => handleCopyUrl(resolveScanUrl(qr.scanUrl), qr.id)}
                         className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
                         title="Copy URL"
                       >
                         {copiedId === qr.id ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
                       </button>
                       <a
-                        href={qr.scanUrl}
+                        href={resolveScanUrl(qr.scanUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 rounded-lg hover:bg-gray-200 transition-colors"

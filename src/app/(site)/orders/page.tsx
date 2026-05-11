@@ -296,11 +296,11 @@ export default function OrdersPage() {
 
   const openInvoiceInNewTab = (order: OrderRow) => {
     const html = buildInvoiceHtml(order);
-    const w = window.open("", "_blank", "noopener,noreferrer");
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
     if (!w) return;
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   if (status === "loading") {
