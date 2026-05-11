@@ -123,6 +123,7 @@ export default function CheckoutPage() {
   const [pincodeError, setPincodeError] = useState('');
   const [pincodeFilled, setPincodeFilled] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   // Address CRUD state
   const [isSavingAddress, setIsSavingAddress] = useState(false);
@@ -206,17 +207,50 @@ export default function CheckoutPage() {
       });
       if (res.ok) {
         const result = await res.json();
-        const addresses = Array.isArray(result) ? result : (result?.data || []);
+        let addresses: SavedAddress[] = [];
+        if (Array.isArray(result)) {
+          addresses = result;
+        } else if (result?.data && Array.isArray(result.data)) {
+          addresses = result.data;
+        } else if (result?.addresses && Array.isArray(result.addresses)) {
+          addresses = result.addresses;
+        } else if (result?.data?.addresses && Array.isArray(result.data.addresses)) {
+          addresses = result.data.addresses;
+        } else if (result?.results && Array.isArray(result.results)) {
+          addresses = result.results;
+        } else {
+          // Last resort: try to find any array in the response
+          const found = Object.values(result).find(v => Array.isArray(v));
+          if (found) addresses = found as SavedAddress[];
+        }
         setSavedAddresses(addresses);
         if (addresses.length > 0) {
-          applyAddress(addresses[0]);
+          if (selectedAddressId === 'new') applyAddress(addresses[0]);
         } else {
+          setSelectedAddressId('new');
+        }
+      } else {
+        // Try to parse non-ok response in case it still has data
+        try {
+          const text = await res.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.data && Array.isArray(parsed.data)) {
+            const addresses = parsed.data as SavedAddress[];
+            setSavedAddresses(addresses);
+            if (addresses.length > 0 && selectedAddressId === 'new') applyAddress(addresses[0]);
+            else setSelectedAddressId('new');
+          } else {
+            setSelectedAddressId('new');
+          }
+        } catch {
           setSelectedAddressId('new');
         }
       }
     } catch (error) {
       console.error('Failed to fetch addresses:', error);
       setSelectedAddressId('new');
+    } finally {
+      setAddressesLoaded(true);
     }
   };
 
