@@ -105,14 +105,47 @@ function clearCheckoutSessionId(): void {
   }
 }
 
+interface QuantityRule {
+  minQty: number;
+  type: 'percentage' | 'flat';
+  value: number;
+  maxDiscount?: number | string | null;
+}
+
+interface CouponRule {
+  code: string;
+  type: 'percentage' | 'flat';
+  value: number;
+}
+
+interface DiscountConfig {
+  quantityRules?: QuantityRule[];
+  coupon?: CouponRule;
+}
+
+interface EnrichedProduct {
+  id: number;
+  discountConfig?: DiscountConfig | null;
+}
+
+interface CheckoutProduct extends Omit<import("@/const/productData").Product, 'discountConfig'> {
+  discountConfig?: DiscountConfig | null;
+}
+
+interface CheckoutCartItem {
+  product: CheckoutProduct;
+  quantity: number;
+}
+
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { cart, cartTotal, clearCart } = useCart();
+  const { cart, clearCart } = useCart();
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [addressData, setAddressData] = useState(EMPTY_ADDRESS);
+
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [checkoutError, setCheckoutError] = useState<string>('');
   // Default to showing the "new address" form until we load saved addresses.
@@ -123,7 +156,6 @@ export default function CheckoutPage() {
   const [pincodeError, setPincodeError] = useState('');
   const [pincodeFilled, setPincodeFilled] = useState(false);
   const [phoneError, setPhoneError] = useState('');
-  const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   // Address CRUD state
   const [isSavingAddress, setIsSavingAddress] = useState(false);
@@ -140,12 +172,164 @@ export default function CheckoutPage() {
 
   const isValidPhoneDigits = (digits: string) => digits.length >= 8 && digits.length <= 15;
 
-  const cartItems = useMemo(() => cart.map(item => ({
-    name: item.product.title,
-    sku: `SKU-${item.product.id}`,
-    quantity: item.quantity,
-    price: item.product.price
-  })), [cart]);
+  const [enrichedProducts, setEnrichedProducts] = useState<EnrichedProduct[]>([]);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  // Fetch products to enrich the cart with discountConfig
+  useEffect(() => {
+    const fetchEnriched = async () => {
+      try {
+        const res = await fetch('/api/backend/products');
+        if (res.ok) {
+          const data = await res.json();
+          setEnrichedProducts(data);
+        }
+      } catch (err) {
+        console.error("Failed to load products for discounts:", err);
+      }
+    };
+    fetchEnriched();
+  }, []);
+
+  const getCartItemDiscountDetails = useCallback((item: CheckoutCartItem) => {
+    const enriched = enrichedProducts.find(p => p.id === item.product.id);
+    const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
+    
+    const originalPrice = Number(item.product.price);
+    const qty = item.quantity;
+    const baseTotal = originalPrice * qty;
+    
+    let discountAmount = 0;
+    let ruleDescription = '';
+
+    // 1. Check for quantity rules first (automatic)
+    let quantityDiscount = 0;
+    if (discountConfig?.quantityRules && Array.isArray(discountConfig.quantityRules)) {
+      const rules = discountConfig.quantityRules
+        .filter((r: QuantityRule) => qty >= r.minQty)
+        .sort((a: QuantityRule, b: QuantityRule) => b.minQty - a.minQty); // best matching rule
+
+      if (rules.length > 0) {
+        const bestRule = rules[0];
+        let computed = 0;
+        if (bestRule.type === 'percentage') {
+          computed = (originalPrice * bestRule.value / 100) * qty;
+        } else {
+          computed = bestRule.value * qty;
+        }
+        
+        if (bestRule.maxDiscount !== undefined && bestRule.maxDiscount !== null && String(bestRule.maxDiscount) !== '') {
+          const cap = Number(bestRule.maxDiscount);
+          computed = Math.min(computed, cap);
+        }
+        
+        quantityDiscount = computed;
+        ruleDescription = `${bestRule.value}${bestRule.type === 'percentage' ? '%' : '₹'} Bulk Discount (Min Qty: ${bestRule.minQty})`;
+      }
+    }
+
+    // 2. Check for coupon rules
+    let couponDiscount = 0;
+    if (appliedCoupon && discountConfig?.coupon) {
+      const coupon = discountConfig.coupon;
+      if (coupon.code.trim().toUpperCase() === appliedCoupon.trim().toUpperCase()) {
+        if (coupon.type === 'percentage') {
+          couponDiscount = (originalPrice * coupon.value / 100) * qty;
+        } else {
+          couponDiscount = coupon.value * qty;
+        }
+        ruleDescription = `Coupon "${coupon.code}" applied (${coupon.value}${coupon.type === 'percentage' ? '%' : '₹'} off)`;
+      }
+    }
+
+    if (couponDiscount > 0 && quantityDiscount > 0) {
+      discountAmount = couponDiscount + quantityDiscount;
+      ruleDescription = `Bulk Discount + Coupon Applied! Saved ₹${discountAmount.toFixed(0)}`;
+    } else if (couponDiscount > 0) {
+      discountAmount = couponDiscount;
+    } else if (quantityDiscount > 0) {
+      discountAmount = quantityDiscount;
+    }
+
+    discountAmount = Math.min(discountAmount, baseTotal);
+
+    return {
+      baseTotal,
+      discountAmount,
+      finalTotal: baseTotal - discountAmount,
+      ruleDescription,
+      hasDiscount: discountAmount > 0,
+      appliedDiscountType: couponDiscount > 0 && quantityDiscount > 0 ? 'coupon' : (couponDiscount > 0 ? 'coupon' : (quantityDiscount > 0 ? 'quantity' : null))
+    };
+  }, [enrichedProducts, appliedCoupon]);
+
+  const computedCartDetails = useMemo(() => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    const items = cart.map(item => {
+      const details = getCartItemDiscountDetails(item as CheckoutCartItem);
+      subtotal += details.baseTotal;
+      totalDiscount += details.discountAmount;
+      return {
+        ...item,
+        details
+      };
+    });
+
+    return {
+      items,
+      subtotal,
+      totalDiscount,
+      finalTotal: Math.max(0, subtotal - totalDiscount)
+    };
+  }, [cart, getCartItemDiscountDetails]);
+
+  const cartItems = useMemo(() => {
+    return computedCartDetails.items.map(item => {
+      const finalItemPrice = item.details.finalTotal / item.quantity;
+      return {
+        name: item.product.title,
+        sku: `SKU-${item.product.id}`,
+        quantity: item.quantity,
+        price: Number(finalItemPrice.toFixed(2))
+      };
+    });
+  }, [computedCartDetails]);
+
+  const handleApplyCoupon = () => {
+    setCouponError(null);
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+
+    let foundCoupon = false;
+    for (const item of cart) {
+      const enriched = enrichedProducts.find(p => p.id === item.product.id);
+      const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
+      if (discountConfig?.coupon?.code?.trim()?.toUpperCase() === code) {
+        foundCoupon = true;
+        break;
+      }
+    }
+
+    if (foundCoupon) {
+      setAppliedCoupon(code);
+      setCouponError(null);
+    } else {
+      setCouponError(`Coupon code "${code}" is invalid or not applicable to items in your cart.`);
+      setAppliedCoupon(null);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
 
   // Close saved-address dropdown on outside click
   useEffect(() => {
@@ -207,6 +391,12 @@ export default function CheckoutPage() {
       });
       if (res.ok) {
         const result = await res.json();
+        
+        const topLevelPhone = result?.data?.phone || result?.phone || '';
+        if (topLevelPhone) {
+          setAddressData(prev => ({ ...prev, phone: topLevelPhone.replace(/\D/g, '').slice(0, 15) }));
+        }
+
         let addresses: SavedAddress[] = [];
         if (Array.isArray(result)) {
           addresses = result;
@@ -234,6 +424,12 @@ export default function CheckoutPage() {
         try {
           const text = await res.text();
           const parsed = JSON.parse(text);
+
+          const topLevelPhone = parsed?.data?.phone || parsed?.phone || '';
+          if (topLevelPhone) {
+            setAddressData(prev => ({ ...prev, phone: topLevelPhone.replace(/\D/g, '').slice(0, 15) }));
+          }
+
           if (parsed?.data && Array.isArray(parsed.data)) {
             const addresses = parsed.data as SavedAddress[];
             setSavedAddresses(addresses);
@@ -249,8 +445,6 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch addresses:', error);
       setSelectedAddressId('new');
-    } finally {
-      setAddressesLoaded(true);
     }
   };
 
@@ -513,7 +707,7 @@ export default function CheckoutPage() {
         if (!orderRes.ok || !orderJson?.success) {
           setCheckoutError(
             orderJson?.message ||
-              (orderText?.startsWith('<!DOCTYPE') ? 'Could not create Razorpay order (server returned HTML). Check backend/proxy.' : 'Could not create Razorpay order. Please try again.')
+            (orderText?.startsWith('<!DOCTYPE') ? 'Could not create Razorpay order (server returned HTML). Check backend/proxy.' : 'Could not create Razorpay order. Please try again.')
           );
           setLoading(false);
           return;
@@ -571,9 +765,9 @@ export default function CheckoutPage() {
               if (!verifyRes.ok || !verifyJson?.success) {
                 setCheckoutError(
                   verifyJson?.message ||
-                    (verifyText?.startsWith('<!DOCTYPE')
-                      ? 'Payment verification failed (server returned HTML). Check backend/proxy.'
-                      : 'Payment verification failed. If money was deducted, contact support.')
+                  (verifyText?.startsWith('<!DOCTYPE')
+                    ? 'Payment verification failed (server returned HTML). Check backend/proxy.'
+                    : 'Payment verification failed. If money was deducted, contact support.')
                 );
                 setLoading(false);
                 return;
@@ -656,7 +850,7 @@ export default function CheckoutPage() {
       } else {
         alert(
           'Checkout failed: ' +
-            (data?.error || data?.message || (text?.startsWith('<!DOCTYPE') ? 'Server returned HTML (check backend/proxy).' : text))
+          (data?.error || data?.message || (text?.startsWith('<!DOCTYPE') ? 'Server returned HTML (check backend/proxy).' : text))
         );
       }
     } catch (err) {
@@ -898,7 +1092,7 @@ export default function CheckoutPage() {
                             onClick={() => startEditAddress(selectedSaved)}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/60 px-3 py-1.5 rounded-lg transition-colors"
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                             Edit
                           </button>
                           <button
@@ -910,7 +1104,7 @@ export default function CheckoutPage() {
                             {deletingAddressId === selectedSaved.id ? (
                               <Loader size={13} className="animate-spin" />
                             ) : (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                             )}
                             Delete
                           </button>
@@ -1055,7 +1249,7 @@ export default function CheckoutPage() {
                         )}
                         {addressFormError && (
                           <p className="text-sm text-red-600 flex items-center gap-1.5">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                             {addressFormError}
                           </p>
                         )}
@@ -1103,45 +1297,151 @@ export default function CheckoutPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Order Summary</h3>
 
                 <div className="space-y-4 mb-6">
-                  {cartItems.map((item, idx) => {
-                    const unit = Number(item.price);
+                  {computedCartDetails.items.map((item, idx) => {
+                    const originalUnit = Number(item.product.price);
+                    const hasDiscount = item.details.hasDiscount;
+                    const enriched = enrichedProducts.find(p => p.id === item.product.id);
+                    const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
+
                     return (
-                      <div key={idx} className="flex gap-4 items-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                      <div key={idx} className="flex gap-4 items-start bg-white p-4 rounded-xl border border-gray-150 shadow-sm hover:shadow-md transition-all">
                         <div className="w-14 h-14 bg-blue-50/50 rounded-lg flex items-center justify-center flex-shrink-0 text-blue-900">
                           <Package size={22} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1 line-clamp-2">{item.name}</h4>
-                          <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                          <h4 className="font-semibold text-gray-900 text-sm leading-tight mb-1 line-clamp-2">{item.product.title}</h4>
+                          
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-gray-400 font-medium">Qty: {item.quantity}</span>
+                            {hasDiscount && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                Discount Applied
+                              </span>
+                            )}
+                          </div>
+
+                          {hasDiscount && (
+                            <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 leading-snug">
+                              {item.details.ruleDescription}
+                            </p>
+                          )}
+
+                          {!appliedCoupon && discountConfig?.coupon && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const code = discountConfig.coupon?.code;
+                                if (code) {
+                                  setCouponInput(code);
+                                  setAppliedCoupon(code);
+                                }
+                              }}
+                              className="text-[11px] text-blue-700 hover:text-blue-950 font-bold underline mt-1.5 text-left block transition-colors"
+                            >
+                              Use code &quot;{discountConfig.coupon.code}&quot; to save {discountConfig.coupon.value}{discountConfig.coupon.type === 'percentage' ? '%' : '₹'}!
+                            </button>
+                          )}
+
+                          {discountConfig?.quantityRules && Array.isArray(discountConfig.quantityRules) && discountConfig.quantityRules.length > 0 && (
+                            <div className="mt-2.5 p-2 rounded-lg bg-blue-50/30 border border-blue-100/50">
+                              <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1">Bulk Buy Offers:</p>
+                              <div className="space-y-0.5">
+                                {discountConfig.quantityRules.map((rule: QuantityRule, idx2: number) => {
+                                  const isMet = item.quantity >= rule.minQty;
+                                  return (
+                                    <p key={idx2} className={`text-[10px] font-semibold flex items-center gap-1 ${isMet ? 'text-green-700' : 'text-gray-500'}`}>
+                                      <span className={`w-1 h-1 rounded-full ${isMet ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                      Buy {rule.minQty}+: Save {rule.value}{rule.type === 'percentage' ? '%' : '₹'}! {isMet && '(Active)'}
+                                    </p>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="font-bold text-gray-900 text-sm">₹{unit * item.quantity}</p>
-                          {item.quantity > 1 && <p className="text-xs text-gray-400 mt-0.5">₹{unit} each</p>}
+                          {hasDiscount ? (
+                            <>
+                              <p className="font-bold text-blue-900 text-sm">₹{item.details.finalTotal.toFixed(2).replace(/\.00$/, '')}</p>
+                              <p className="line-through text-xs text-gray-400 mt-0.5">₹{item.details.baseTotal.toFixed(2).replace(/\.00$/, '')}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-bold text-gray-900 text-sm">₹{item.details.baseTotal.toFixed(2).replace(/\.00$/, '')}</p>
+                              {item.quantity > 1 && <p className="text-xs text-gray-400 mt-0.5">₹{originalUnit.toFixed(2).replace(/\.00$/, '')} each</p>}
+                            </>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
+                {/* Promo Code Coupon Input Box */}
+                <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm mb-6">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Have a promo code?</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="ENTER CODE"
+                      value={couponInput}
+                      onChange={e => {
+                        setCouponInput(e.target.value);
+                        setCouponError(null);
+                      }}
+                      className="flex-1 border border-gray-200 px-3.5 py-2.5 rounded-xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all uppercase text-sm font-semibold tracking-wider placeholder-gray-300 bg-gray-50/50 hover:bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      className="bg-blue-900 hover:bg-blue-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponError && <p className="text-xs text-red-500 mt-2 font-medium">{couponError}</p>}
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 text-xs font-bold px-3.5 py-2.5 rounded-xl mt-3 border border-emerald-100">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        Coupon &quot;{appliedCoupon}&quot; Applied!
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-emerald-900 hover:text-red-600 transition-colors font-extrabold underline text-[11px]"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="border-t border-gray-200 pt-5 space-y-3 mb-6 text-sm">
                   <div className="flex justify-between text-gray-500">
                     <span>Subtotal</span>
-                    <span className="font-medium text-gray-900">₹{cartTotal}</span>
+                    <span className="font-semibold text-gray-900">₹{computedCartDetails.subtotal.toFixed(2).replace(/\.00$/, '')}</span>
                   </div>
+                  {computedCartDetails.totalDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-semibold">
+                      <span>Total Savings</span>
+                      <span>-₹{computedCartDetails.totalDiscount.toFixed(2).replace(/\.00$/, '')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-500">
                     <span>Shipping</span>
-                    <span className="font-medium text-green-600">Free</span>
+                    <span className="font-semibold text-green-600">Free</span>
                   </div>
                   <div className="flex justify-between text-gray-500">
                     <span>Taxes</span>
-                    <span className="font-medium text-gray-900">Included</span>
+                    <span className="font-semibold text-gray-900">Included</span>
                   </div>
                 </div>
 
                 <div className="border-t border-gray-200 pt-5 mb-8">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-3xl font-bold text-blue-900">₹{cartTotal}</span>
+                    <span className="text-3xl font-extrabold text-blue-900">₹{computedCartDetails.finalTotal.toFixed(2).replace(/\.00$/, '')}</span>
                   </div>
                   <p className="text-right text-xs text-gray-400 mt-1">Includes all taxes</p>
                 </div>

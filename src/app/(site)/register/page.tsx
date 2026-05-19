@@ -79,24 +79,7 @@ function Spinner() {
     );
 }
 
-/* ─────────────────────────────────────────────
-   Logo Mark (shared between panels)
-───────────────────────────────────────────── */
-function LogoMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
-    const box = size === 'sm' ? 'h-9 w-9 rounded-xl' : 'h-10 w-10 rounded-2xl';
-    return (
-        <div className={`${box} flex flex-shrink-0 items-center justify-center bg-white/10 ring-1 ring-white/15 overflow-hidden`}>
-            <Image
-                src={safeImageSrc("/images/logo/icon-logo.png")}
-                alt="Brand mark"
-                width={48}
-                height={48}
-                className="h-full w-full object-contain p-2"
-                priority
-            />
-        </div>
-    );
-}
+
 
 /* ─────────────────────────────────────────────
    Main Content
@@ -116,7 +99,13 @@ function RegisterContent() {
     // Redirect after successful login
     useEffect(() => {
         if (status === 'authenticated') {
-            const callbackUrl = searchParams.get('callbackUrl') || '/';
+            let callbackUrl = searchParams.get('callbackUrl') || '/';
+            try {
+                const url = new URL(callbackUrl, window.location.origin);
+                callbackUrl = url.pathname + url.search + url.hash;
+            } catch {
+                // Ignore parsing errors
+            }
             router.push(callbackUrl);
         }
     }, [status, router, searchParams]);
@@ -208,7 +197,13 @@ function RegisterContent() {
                 return;
             }
             if (result?.ok) {
-                const callbackUrl = searchParams.get('callbackUrl') || '/';
+                let callbackUrl = searchParams.get('callbackUrl') || '/';
+                try {
+                    const url = new URL(callbackUrl, window.location.origin);
+                    callbackUrl = url.pathname + url.search + url.hash;
+                } catch {
+                    // Ignore parsing errors
+                }
                 router.push(callbackUrl);
             }
         } catch (error) {

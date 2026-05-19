@@ -4,11 +4,11 @@ import { useCart } from "@/components/providers/CartProvider";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { ShoppingCart, X } from "react-feather";
+import { ShoppingCart, X, Plus, Minus, Trash2 } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 
 export default function CartDropdown() {
-    const { cart, removeFromCart, cartTotal } = useCart();
+    const { cart, addToCart, removeFromCart, cartTotal } = useCart();
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,7 +60,6 @@ export default function CartDropdown() {
         return () => {
             if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cart.length]);
 
     return (
@@ -84,60 +83,89 @@ export default function CartDropdown() {
                 <div
                     role="dialog"
                     aria-label="Cart"
-                    className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] bg-white shadow-xl rounded-2xl border border-gray-200 z-50 overflow-hidden"
+                    className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden"
                 >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <h3 className="text-sm font-bold tracking-wide text-gray-900">Your Cart</h3>
+                    <div className="flex items-center justify-between px-4.5 py-3.5 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="text-sm font-extrabold tracking-wide text-gray-900">Shopping Cart ({cart.length})</h3>
                         <button
                             type="button"
                             onClick={closeDropdown}
-                            className="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 hover:bg-gray-50 hover:text-gray-800 active:scale-95"
+                            className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800 active:scale-95 transition-all"
                             aria-label="Close cart"
                         >
                             <X size={16} />
                         </button>
                     </div>
                     {cart.length === 0 ? (
-                        <div className="px-4 py-6">
-                            <p className="text-sm text-gray-600">Your cart is empty.</p>
-                            <p className="mt-1 text-xs text-gray-500">Add items to see them here.</p>
+                        <div className="px-5 py-8 text-center">
+                            <p className="text-sm font-medium text-gray-600">Your cart is empty.</p>
+                            <p className="mt-1 text-xs text-gray-400">Add items to see them here.</p>
                         </div>
                     ) : (
                         <>
-                            <div className="max-h-72 overflow-y-auto px-4 py-3">
+                            <div className="max-h-80 overflow-y-auto px-4.5 py-2 divide-y divide-gray-100">
                                 {cart.map((item) => (
-                                    <div key={item.product.id} className="flex gap-3 py-3 border-b border-gray-100 items-center last:border-b-0">
-                                        <Image
-                                            src={resolveBackendImageSrc(item.product.imgOne, "/images/fallback-image.png")}
-                                            alt={item.product.title}
-                                            width={44}
-                                            height={44}
-                                            className="rounded-lg border border-gray-100 object-cover"
-                                        />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.product.title}</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">{item.quantity} × ₹{item.product.price}</p>
+                                    <div key={item.product.id} className="flex gap-3.5 py-4 items-center transition-all duration-300">
+                                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0">
+                                            <Image
+                                                src={resolveBackendImageSrc(item.product.imgOne, "/images/fallback-image.png")}
+                                                alt={item.product.title}
+                                                fill
+                                                className="object-cover"
+                                            />
                                         </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 truncate leading-tight">{item.product.title}</p>
+                                            <p className="text-xs font-semibold text-blue-900 mt-1">₹{item.product.price}</p>
+                                        </div>
+                                        
+                                        {/* Quantity control */}
+                                        <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-0.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (item.quantity > 1) {
+                                                        addToCart(item.product, -1);
+                                                    } else {
+                                                        removeFromCart(item.product.id);
+                                                    }
+                                                }}
+                                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition active:scale-95 shrink-0"
+                                                aria-label="Decrease quantity"
+                                            >
+                                                <Minus size={11} strokeWidth={2.5} />
+                                            </button>
+                                            <span className="w-5 text-center text-xs font-extrabold text-gray-800">{item.quantity}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => addToCart(item.product, 1)}
+                                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition active:scale-95 shrink-0"
+                                                aria-label="Increase quantity"
+                                            >
+                                                <Plus size={11} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
+
                                         <button
                                             type="button"
                                             onClick={() => removeFromCart(item.product.id)}
-                                            className="inline-flex items-center justify-center rounded-lg p-2 text-red-500 hover:bg-red-50 hover:text-red-700"
+                                            className="w-8 h-8 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 hover:text-red-700 transition shrink-0 active:scale-95"
                                             aria-label={`Remove ${item.product.title} from cart`}
                                         >
-                                            <X size={16} />
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
-                            <div className="px-4 py-3 border-t border-gray-100">
-                                <div className="flex justify-between items-center font-semibold text-gray-900">
-                                    <span className="text-sm">Total</span>
-                                    <span className="text-sm">₹{cartTotal}</span>
+                            <div className="px-4.5 py-4 border-t border-gray-100 bg-gray-50/20">
+                                <div className="flex justify-between items-center font-bold text-gray-900">
+                                    <span className="text-sm">Total Amount</span>
+                                    <span className="text-base text-blue-900">₹{cartTotal}</span>
                                 </div>
                                 <Link
                                     onClick={() => setIsOpen(false)}
                                     href="/checkout"
-                                    className="mt-3 block text-center w-full bg-brand-primary text-white py-2.5 rounded-xl font-semibold text-sm hover:opacity-95 active:scale-[0.99] transition"
+                                    className="mt-3.5 block text-center w-full bg-blue-900 hover:bg-blue-800 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/10 hover:shadow-blue-900/20 transition-all active:scale-[0.98]"
                                 >
                                     Checkout
                                 </Link>

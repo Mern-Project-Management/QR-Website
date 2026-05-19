@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { CheckCircle, Download, Eye, Loader, ShoppingBag, X } from "react-feather";
+import { CheckCircle, Download, Eye, Loader, ShoppingBag, X, Award, UserCheck } from "react-feather";
 import { createPortal } from "react-dom";
 
 type OrderItem = {
@@ -40,15 +40,6 @@ type OrderRow = {
   items: OrderItem[];
 };
 
-type OrdersApiResponse = {
-  success: boolean;
-  data: OrderRow[];
-  total?: number;
-  page?: number;
-  limit?: number;
-  totalPages?: number;
-  message?: string;
-};
 
 const formatMoney = (value: unknown) => {
   const n = typeof value === "string" ? Number(value) : typeof value === "number" ? value : 0;
@@ -326,18 +317,35 @@ export default function OrdersPage() {
 
       <div className="pt-6 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Orders</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{orders.length}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Orders</p>
+              <p className="mt-2 text-3xl font-black text-gray-900">{orders.length}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center">
+              <ShoppingBag size={24} />
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Spent</p>
-            <p className="mt-2 text-3xl font-bold text-blue-900">{formatMoney(totalSpent)}</p>
+          
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Spent</p>
+              <p className="mt-2 text-3xl font-black text-blue-900">{formatMoney(totalSpent)}</p>
+            </div>
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+              <Award size={24} />
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Signed in as</p>
-            <p className="mt-2 text-sm font-semibold text-gray-900 break-all">{session?.user?.email}</p>
+
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Signed In As</p>
+              <p className="mt-2 text-sm font-bold text-gray-800 break-all">{session?.user?.email}</p>
+            </div>
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+              <UserCheck size={24} />
+            </div>
           </div>
         </div>
 
@@ -379,58 +387,63 @@ export default function OrdersPage() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">Order History</h3>
-                <div className="text-xs text-gray-400">Showing {orders.length} orders</div>
+            <div className="hidden lg:block bg-white rounded-2xl border border-gray-150/80 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-150/80 bg-gray-50/50 flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-gray-900">Order History</h3>
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-100">
+                  Showing {orders.length} orders
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full">
+                <table className="min-w-full divide-y divide-gray-100">
                   <thead className="bg-gray-50">
-                    <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-widest">
-                      <th className="px-6 py-4">Order</th>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Total</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Payment</th>
-                      <th className="px-6 py-4 text-right">Invoice</th>
+                    <tr className="text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      <th className="px-6 py-4">Order ID</th>
+                      <th className="px-6 py-4">Order Date</th>
+                      <th className="px-6 py-4">Total Amount</th>
+                      <th className="px-6 py-4">Order Status</th>
+                      <th className="px-6 py-4">Payment Info</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 bg-white">
                     {orders.map((o) => (
-                      <tr key={o.id} className="hover:bg-blue-50/30 transition-colors">
+                      <tr key={o.id} className="hover:bg-blue-50/20 transition-colors">
                         <td className="px-6 py-5">
-                          <div className="font-semibold text-gray-900">{o.id}</div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {o.items?.length || 0} item{o.items?.length === 1 ? "" : "s"}
+                          <div className="font-extrabold text-gray-900 text-sm flex items-center gap-1">
+                            <span className="text-blue-900">#</span>{o.id}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1.5 font-medium">
+                            {o.items?.length || 0} product{o.items?.length === 1 ? "" : "s"} purchased
                           </div>
                         </td>
-                        <td className="px-6 py-5 text-sm text-gray-700">{formatDate(o.createdAt)}</td>
-                        <td className="px-6 py-5 text-sm font-bold text-gray-900">{formatMoney(o.totalAmount)}</td>
+                        <td className="px-6 py-5 text-sm font-semibold text-gray-700">{formatDate(o.createdAt)}</td>
+                        <td className="px-6 py-5 text-sm font-extrabold text-gray-900">{formatMoney(o.totalAmount)}</td>
                         <td className="px-6 py-5">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold ${statusStyles(o.status)}`}>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm ${statusStyles(o.status)}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
                             {String(o.status || "PENDING")}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm text-gray-700">
-                          <div className="font-semibold text-gray-900">{o.paymentMethod || "-"}</div>
-                          <div className="text-xs text-gray-400 mt-1">{o.paymentStatus || "-"}</div>
+                        <td className="px-6 py-5 text-sm">
+                          <div className="font-bold text-gray-800 uppercase tracking-wide text-xs">{o.paymentMethod || "-"}</div>
+                          <div className="text-[11px] text-gray-400 mt-1 font-semibold">{o.paymentStatus || "-"}</div>
                         </td>
                         <td className="px-6 py-5">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2.5">
                             <button
                               type="button"
                               onClick={() => setActiveInvoiceOrder(o)}
-                              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all shadow-sm"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                             >
-                              <Eye size={16} /> View
+                              <Eye size={14} /> View Invoice
                             </button>
                             <button
                               type="button"
                               onClick={() => downloadInvoice(o)}
-                              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                             >
-                              <Download size={16} /> Download
+                              <Download size={14} /> PDF
                             </button>
                           </div>
                         </td>
@@ -444,43 +457,43 @@ export default function OrdersPage() {
             {/* Mobile / tablet cards */}
             <div className="lg:hidden grid grid-cols-1 gap-4">
               {orders.map((o) => (
-                <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div key={o.id} className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{o.id}</p>
-                      <p className="text-xs text-gray-400 mt-1">{formatDate(o.createdAt)} · {o.items?.length || 0} items</p>
+                      <p className="text-sm font-extrabold text-gray-900 truncate">#{o.id}</p>
+                      <p className="text-xs text-gray-400 mt-1.5 font-semibold">{formatDate(o.createdAt)} · {o.items?.length || 0} items</p>
                     </div>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold ${statusStyles(o.status)}`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm ${statusStyles(o.status)}`}>
                       {String(o.status || "PENDING")}
                     </span>
                   </div>
-
+ 
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Total</p>
-                      <p className="mt-1 font-extrabold text-blue-900">{formatMoney(o.totalAmount)}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Amount</p>
+                      <p className="mt-1.5 font-extrabold text-blue-900">{formatMoney(o.totalAmount)}</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Payment</p>
-                      <p className="mt-1 font-bold text-gray-900">{o.paymentMethod || "-"}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{o.paymentStatus || "-"}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Payment</p>
+                      <p className="mt-1.5 font-bold text-gray-900 text-xs uppercase">{o.paymentMethod || "-"}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 font-semibold">{o.paymentStatus || "-"}</p>
                     </div>
                   </div>
-
+ 
                   <div className="mt-4 flex gap-2">
                     <button
                       type="button"
                       onClick={() => setActiveInvoiceOrder(o)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all shadow-sm"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                     >
-                      <Eye size={16} /> View Invoice
+                      <Eye size={14} /> View Invoice
                     </button>
                     <button
                       type="button"
                       onClick={() => downloadInvoice(o)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                     >
-                      <Download size={16} /> Download
+                      <Download size={14} /> Download
                     </button>
                   </div>
                 </div>

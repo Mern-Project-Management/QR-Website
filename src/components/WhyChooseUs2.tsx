@@ -240,6 +240,7 @@ export default function WhyChooseUs2() {
               >
                 {step.image ? (
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={resolveBackendImageSrc(step.image, '') as string}
                       alt={step.title || 'How it works'}

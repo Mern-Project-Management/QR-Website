@@ -6,7 +6,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Star, Truck, Package, ShieldCheck } from "lucide-react";
 import ProductGallery from "@/components/ui/ProductGallery";
 import { useCart } from "@/components/providers/CartProvider";
-import { notFound, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import QuantityDropdown from "@/components/ui/QuantityDropdown";
 import Accordion from "@/components/ui/Accordion";
 import { cn } from "@/lib/cn";
@@ -26,7 +26,6 @@ function formatInr(value: number | string): string {
 
 export default function SingleProductPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
-    const router = useRouter();
     const { addToCart } = useCart();
     const [quantity, setQuantity] = useState(1);
     const [cartMessage, setCartMessage] = useState<string | null>(null);

@@ -1,15 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Boxes } from "lucide-react";
 import Button from "../ui/Button";
 import Image, { StaticImageData } from "next/image";
 import TopCarousel from "../ui/TopCarousel";
 import { Skeleton } from "../ui/Skeleton";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import img from "../../../public/images/right-banner-bg.webp";
-import a1 from "../../../public/images/avater-11.webp";
-import a2 from "../../../public/images/avater-12.webp";
-import a3 from "../../../public/images/avater-13.webp";
 import shap from "../../../public/images/shap1.webp";
 
 interface HeroContent {

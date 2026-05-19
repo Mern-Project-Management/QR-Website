@@ -7,7 +7,7 @@ interface BreadcrumbProps {
     variant?: "default" | "light";
 }
 
-export const Breadcrumb = ({ items, variant: _variant = "default" }: BreadcrumbProps) => {
+export const Breadcrumb = ({ items }: BreadcrumbProps) => {
     return (
         <nav className="text-sm font-medium text-gray-800" aria-label="Breadcrumb">
             <ol className="inline-flex flex-wrap items-center justify-center gap-x-1 gap-y-1 md:space-x-1 md:gap-x-0">

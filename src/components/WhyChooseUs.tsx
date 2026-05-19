@@ -246,6 +246,7 @@ export default function WhyChooseUs() {
               >
                 {feature.image ? (
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={resolveBackendImageSrc(feature.image, '') as string}
                       alt={feature.title || 'Why choose us'}

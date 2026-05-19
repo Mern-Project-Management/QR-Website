@@ -408,22 +408,45 @@ export default function DashboardPage() {
 
       <div className="pt-6 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total QR Codes</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{stats.total}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total QR Codes</p>
+              <p className="mt-2 text-3xl font-black text-gray-900">{stats.total}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0">
+              <QrCode size={22} />
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Active</p>
-            <p className="mt-2 text-3xl font-bold text-green-600">{stats.active}</p>
+          
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active QRs</p>
+              <p className="mt-2 text-3xl font-black text-green-600">{stats.active}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-50 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0">
+              <CheckCircle size={22} className="animate-pulse" />
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">DND Active</p>
-            <p className="mt-2 text-3xl font-bold text-amber-600">{stats.dndActive}</p>
+
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">DND Active</p>
+              <p className="mt-2 text-3xl font-black text-amber-600">{stats.dndActive}</p>
+            </div>
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Moon size={22} />
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Scans</p>
-            <p className="mt-2 text-3xl font-bold text-blue-900">{stats.totalScans}</p>
+
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Scans</p>
+              <p className="mt-2 text-3xl font-black text-blue-900">{stats.totalScans}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Scan size={22} />
+            </div>
           </div>
         </div>
 
@@ -467,36 +490,37 @@ export default function DashboardPage() {
             {qrCodes.map((qr) => (
               <div
                 key={qr.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white rounded-2xl border border-gray-150/85 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200"
               >
                 {/* Card Header */}
-                <div className="px-6 py-5 border-b border-gray-100">
+                <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${getCategoryColor(
                           qr.category
                         )}`}
                       >
                         {getCategoryIcon(qr.category)}
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">{qr.assetName}</h3>
-                        <p className="text-xs text-gray-400">ID: {qr.uniqueId}</p>
+                        <h3 className="text-base font-extrabold text-gray-900">{qr.assetName}</h3>
+                        <p className="text-xs text-gray-400 mt-1 font-semibold">ID: {qr.uniqueId}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-col items-end gap-1.5">
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold ${getStatusStyles(
+                        className={`inline-flex items-center px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider shadow-sm ${getStatusStyles(
                           qr.status,
                           qr.isActive
                         )}`}
                       >
+                        <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />
                         {qr.isActive ? "Active" : "Inactive"}
                       </span>
                       {qr.isDndActive && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold">
-                          <Moon size={10} className="mr-1" /> DND
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide">
+                          <Moon size={10} className="mr-1" /> DND Mode
                         </span>
                       )}
                     </div>
@@ -504,86 +528,88 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Card Body */}
-                <div className="px-6 py-4">
+                <div className="px-6 py-5">
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Category</p>
-                      <p className="mt-1 font-semibold text-gray-900">{qr.category}</p>
+                    <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Asset Category</p>
+                      <p className="mt-1 text-sm font-extrabold text-gray-800 uppercase tracking-wide">{qr.category}</p>
                     </div>
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Scans</p>
-                      <p className="mt-1 font-semibold text-gray-900 flex items-center gap-1">
-                        <Scan size={14} /> {qr.scans}
+                    <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scans Count</p>
+                      <p className="mt-1 text-sm font-extrabold text-blue-900 flex items-center gap-1.5">
+                        <Scan size={14} className="text-blue-600" /> {qr.scans} scans
                       </p>
                     </div>
                   </div>
 
                   {/* QR URL */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4">
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-1">QR URL</p>
-                    <div className="flex items-center gap-2">
+                  <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80 mb-4">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Secure Link</p>
+                    <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-gray-250/60 shadow-inner">
                       <input
                         type="text"
                         value={resolveScanUrl(qr.scanUrl)}
                         readOnly
-                        className="flex-1 text-sm text-gray-600 bg-transparent border-none outline-none truncate"
+                        className="flex-1 text-xs text-gray-600 bg-transparent border-none outline-none truncate font-semibold"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleCopyUrl(resolveScanUrl(qr.scanUrl), qr.id)}
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                        title="Copy URL"
-                      >
-                        {copiedId === qr.id ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-                      </button>
-                      <a
-                        href={resolveScanUrl(qr.scanUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                        title="Open in new tab"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUrl(resolveScanUrl(qr.scanUrl), qr.id)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+                          title="Copy Link"
+                        >
+                          {copiedId === qr.id ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                        </button>
+                        <a
+                          href={resolveScanUrl(qr.scanUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+                          title="Open Link"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      </div>
                     </div>
                   </div>
 
                   {/* Created/Updated */}
-                  <div className="text-xs text-gray-400 flex items-center gap-4">
+                  <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium">
                     <span className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      Created: {formatDate(qr.createdAt)}
+                      <Calendar size={12} className="text-gray-400" />
+                      Registered: {formatDate(qr.createdAt)}
                     </span>
                     {qr.dndUntil && qr.isDndActive && (
-                      <span className="flex items-center gap-1 text-amber-600">
+                      <span className="flex items-center gap-1 text-amber-600 font-bold">
                         <Clock size={12} />
-                        DND until: {formatDate(qr.dndUntil)}
+                        DND expires: {formatDate(qr.dndUntil)}
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Card Actions */}
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                  <div className="flex flex-wrap gap-2">
+                <div className="px-6 py-4.5 border-t border-gray-100 bg-gray-50/40">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <button
                       type="button"
                       onClick={() => openContactModal(qr)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold text-sm transition-all shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                     >
-                      <Eye size={16} /> View Details
+                      <Eye size={14} /> View Contact details
                     </button>
                     <button
                       type="button"
                       onClick={() => openDndModal(qr)}
-                      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm ${
+                      className={`inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
                         qr.isDndActive
-                          ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200"
+                          ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-250/30"
                           : "bg-blue-900 hover:bg-blue-800 text-white border border-blue-900"
                       }`}
                     >
-                      {qr.isDndActive ? <Sun size={16} /> : <Moon size={16} />}
-                      {qr.isDndActive ? "Disable DND" : "Enable DND"}
+                      {qr.isDndActive ? <Sun size={14} /> : <Moon size={14} />}
+                      {qr.isDndActive ? "Disable DND" : "Setup DND"}
                     </button>
                   </div>
                 </div>

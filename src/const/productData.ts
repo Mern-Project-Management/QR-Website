@@ -19,4 +19,19 @@ export interface Product {
     shortDesc?: string;
     longDesc?: string;
     slug?: string;
+    discountConfig?: ProductDiscountConfig | null;
+}
+
+export interface ProductDiscountConfig {
+    quantityRules?: Array<{
+        minQty: number;
+        type: 'percentage' | 'flat';
+        value: number;
+        maxDiscount?: number | string | null;
+    }>;
+    coupon?: {
+        code: string;
+        type: 'percentage' | 'flat';
+        value: number;
+    };
 }
