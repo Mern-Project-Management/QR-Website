@@ -687,11 +687,15 @@ export default function CheckoutPage() {
         };
 
         const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
+        const customerToken = typeof window !== 'undefined' ? window.localStorage.getItem('customer-token')?.trim() || '' : '';
+        const activeToken = accessToken || customerToken;
+
         const orderRes = await fetch('/api/razorpay/order', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
+            ...(customerToken ? { 'x-customer-token': customerToken } : {}),
           },
           body: JSON.stringify(payload),
         });
@@ -738,14 +742,29 @@ export default function CheckoutPage() {
           readonly: contact ? { contact: true } : undefined,
           notes: { customerId: String((session?.user as { id?: string })?.id || '') },
           theme: { color: '#1e3a8a' },
+          config: {
+            display: {
+              hide: [
+                { method: 'paylater' },
+                { method: 'emi' }
+              ],
+              preferences: {
+                show_default_blocks: true
+              }
+            }
+          },
           handler: async function (response: RazorpayPaymentSuccessResponse) {
             try {
               const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
+              const customerToken = typeof window !== 'undefined' ? window.localStorage.getItem('customer-token')?.trim() || '' : '';
+              const activeToken = accessToken || customerToken;
+
               const verifyRes = await fetch('/api/razorpay/verify', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                  ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
+                  ...(customerToken ? { 'x-customer-token': customerToken } : {}),
                 },
                 body: JSON.stringify({
                   localOrderId,
