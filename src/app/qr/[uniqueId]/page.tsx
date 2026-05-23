@@ -94,7 +94,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     try {
       const headers: Record<string, string> = {};
       if (deviceId) headers["x-qr-device-id"] = deviceId;
-      const res = await fetch(`${ADMIN_ORIGIN}/api/public/qr/${uniqueId}`, {
+      const res = await fetch(`/api/public/qr/${uniqueId}`, {
         headers: Object.keys(headers).length ? headers : undefined,
       });
       const json = await res.json();
@@ -123,7 +123,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
       try {
         const headers: Record<string, string> = {};
         if (deviceId) headers["x-qr-device-id"] = deviceId;
-        const res = await fetch(`${ADMIN_ORIGIN}/api/public/qr/${uniqueId}`, {
+        const res = await fetch(`/api/public/qr/${uniqueId}`, {
           headers: Object.keys(headers).length ? headers : undefined,
           signal: controller.signal,
         });
@@ -541,8 +541,8 @@ function DispatchSection({
             {msg && (
               <p
                 className={`rounded-xl px-4 py-3 text-sm font-medium ${msg.includes("success") || msg.includes("Dispatched")
-                    ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                    : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                  ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                  : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
                   }`}
               >
                 {msg}
@@ -993,8 +993,8 @@ function ActivateSection({
         {msg && (
           <p
             className={`rounded-xl px-4 py-3 text-sm font-medium ${msg.includes("success") || msg.includes("activated") || msg.includes("Profile saved")
-                ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+              ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+              : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
               }`}
           >
             {msg}
