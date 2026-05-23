@@ -80,9 +80,10 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
       rawRole &&
       typeof rawRole === "object" &&
       "name" in rawRole &&
-      typeof (rawRole as any).name === "string"
+      typeof (rawRole as { name?: unknown }).name === "string"
     ) {
-      roleName = (rawRole as any).name;
+      const roleObj = rawRole as { name?: string };
+      roleName = roleObj.name ?? "";
     }
     return roleName === "admin" || roleName === "editor";
   }, [session]);
@@ -1111,6 +1112,9 @@ function ContactSection({ uniqueId, onDone, adminOrigin }: { uniqueId: string; o
           if (did && connectionId) {
             setCallData({ did, connectionId });
             setCallState("allocated");
+            if (onDone) {
+              onDone();
+            }
             if (typeof window !== "undefined") {
               try {
                 const isCoarsePointer =
