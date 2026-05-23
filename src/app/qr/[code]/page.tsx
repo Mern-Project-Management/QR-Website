@@ -16,24 +16,11 @@ export default function QRRedirectPage() {
       try {
         const res = await fetch(`https://admin.odokho.com/api/public/qr/${code}`);
 
-        if (!res.ok) {
-          router.replace("/404");
-          return;
-        }
+        console.log(res, "RES RES RES RES RES");
 
-        const data = await res.json();
 
-        console.log(data, "QRRR statusssss DATATATTATATATAT");
-        
-
-        // check QR status
-        if (data.status == "DISPATCHED") {
-           window.location.href = `https://www.odokho.com/qr/${code}`;
-        }
-
-        window.location.href = `${ADMIN_ORIGIN}/qr/${code}`;
       } catch (err) {
-        router.replace("/404");
+        // router.replace("/404");
       }
     };
 
