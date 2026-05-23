@@ -1,5 +1,5 @@
 
-const DEFAULT_PRODUCTION_ADMIN_ORIGIN = "https://admin.odokho.com";
+const DEFAULT_PRODUCTION_ADMIN_ORIGIN = "https://odokho.com";
 const DEFAULT_DEV_ADMIN_ORIGIN = "http://localhost:3060";
 
 export function getAdminOrigin(): string {
