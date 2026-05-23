@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
+import Image from "next/image";
 
 const isPetQrCategory = (cat: string) => /pet|dog|cat/i.test(cat);
 const isVehicleQrCategory = (cat: string) => /vehicle|car|bike|motor/i.test(cat);
@@ -61,7 +62,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
       const existing = window.localStorage.getItem(key);
       if (existing) return existing;
       const v =
-        (window.crypto as any)?.randomUUID?.() ||
+        window.crypto?.randomUUID?.() ||
         `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
       window.localStorage.setItem(key, v);
       return v;
@@ -71,7 +72,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   });
 
   const isStaff = useMemo(() => {
-    const rawRole = (session?.user as any)?.role;
+    const rawRole = (session?.user as { role?: unknown })?.role;
     const roleName =
       typeof rawRole === "string"
         ? rawRole
@@ -213,10 +214,12 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
       <header className="mb-8 sm:mb-10">
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-gray-50/80 px-5 py-8 text-center shadow-md dark:border-white/10 dark:from-[#0e1726] dark:to-[#0b1420]">
           <div className="mx-auto mb-4 inline-flex rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 dark:bg-black/30 dark:ring-white/10">
-            <img
+            <Image
               src={resolveBackendImageSrc(data.defaultImagePath, defaultQrImageSrc) as string}
               alt=""
-              className="h-20 w-20 rounded-xl object-cover sm:h-24 sm:w-24"
+              width={96}
+              height={96}
+              className="rounded-xl object-cover sm:h-24 sm:w-24"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (!el.src.endsWith("default-qr.png")) {
@@ -1107,7 +1110,7 @@ function ContactSection({ uniqueId, onDone, adminOrigin }: { uniqueId: string; o
               try {
                 const isCoarsePointer =
                   typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
-                const isTouch = "ontouchstart" in window || (navigator as any)?.maxTouchPoints > 0;
+                const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
                 if (isCoarsePointer || isTouch) {
                   openDialer(did);
                 }
