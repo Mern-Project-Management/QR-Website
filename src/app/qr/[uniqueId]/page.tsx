@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck, Phone, MessageCircle, AlertTriangle, BadgeCheck, Headset, Lock, Send, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import Image from "next/image";
@@ -31,13 +31,17 @@ interface LandingData {
   expiredMessage?: string | null;
 }
 
-const CONTACT_REASONS = [
-  { value: "FOUND", label: "Found item / property" },
-  { value: "RETURN", label: "Return / handover" },
-  { value: "DAMAGED", label: "Damage concern" },
-  { value: "GENERAL", label: "General inquiry" },
-  { value: "OTHER", label: "Other" },
-];
+const Footer = () => (
+  <div className="mt-8 pb-6 text-center space-y-4 px-4">
+    <p className="text-[11px] text-gray-500 font-medium">
+      Your privacy is protected.<br />
+      Phone numbers are never shared.
+    </p>
+    <p className="text-[11px] font-medium text-gray-400">
+      Powered by <span className="text-blue-600 font-bold">Odokho Digital Service</span>
+    </p>
+  </div>
+);
 
 export default function QRLandingPage() {
   const params = useParams();
@@ -61,9 +65,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     try {
       const existing = window.localStorage.getItem(key);
       if (existing) return existing;
-      const v =
-        window.crypto?.randomUUID?.() ||
-        `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+      const v = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       window.localStorage.setItem(key, v);
       return v;
     } catch {
@@ -74,16 +76,9 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   const isStaff = useMemo(() => {
     const rawRole = (session?.user as { role?: string | { name?: string } })?.role;
     let roleName = "";
-    if (typeof rawRole === "string") {
-      roleName = rawRole;
-    } else if (
-      rawRole &&
-      typeof rawRole === "object" &&
-      "name" in rawRole &&
-      typeof (rawRole as { name?: unknown }).name === "string"
-    ) {
-      const roleObj = rawRole as { name?: string };
-      roleName = roleObj.name ?? "";
+    if (typeof rawRole === "string") roleName = rawRole;
+    else if (rawRole && typeof rawRole === "object" && "name" in rawRole && typeof (rawRole as any).name === "string") {
+      roleName = (rawRole as any).name ?? "";
     }
     return roleName === "admin" || roleName === "editor";
   }, [session]);
@@ -115,7 +110,6 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
-
     const loadData = async () => {
       if (!isMounted) return;
       setLoading(true);
@@ -144,9 +138,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
         if (isMounted) setLoading(false);
       }
     };
-
     loadData();
-
     return () => {
       isMounted = false;
       controller.abort();
@@ -155,6 +147,12 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
 
   useEffect(() => {
     if (!data) return;
+
+    if (data.phase === "dispatch" && isStaff) {
+      window.location.href = `https://admin.odokho.com/qr-dispatch/?qr=${uniqueId}`;
+      return;
+    }
+
     if (data.status === "Expired") {
       router.replace(`/qr/${uniqueId}/expired`);
       return;
@@ -162,28 +160,12 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     if (data.status === "Disabled") {
       router.replace(`/qr/${uniqueId}/disabled`);
     }
-  }, [data, router, uniqueId]);
+  }, [data, router, uniqueId, isStaff]);
 
   if (loading) {
     return (
       <div className="flex min-h-[55vh] flex-col items-center justify-center gap-4 px-6 py-16">
-        <div className="relative">
-          <span
-            className="absolute inset-0 animate-ping rounded-full bg-primary/20"
-            aria-hidden
-          />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="text-base font-semibold text-gray-900 dark:text-white">
-            Loading QR
-          </p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Preparing your secure link…
-          </p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -191,20 +173,13 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   if (err || !data) {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center px-4 py-12">
-        <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.06] p-8 text-center shadow-sm dark:bg-red-500/10">
-          <p className="text-lg font-semibold text-red-600">
-            Something went wrong
-          </p>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            {err || "This QR could not be loaded."}
-          </p>
+        <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.06] p-8 text-center shadow-sm">
+          <p className="text-lg font-semibold text-red-600">Something went wrong</p>
+          <p className="mt-2 text-sm text-gray-600">{err || "This QR could not be loaded."}</p>
           <button
             type="button"
-            className="mt-6 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 sm:w-auto"
-            onClick={() => {
-              setErr(null);
-              reload();
-            }}
+            className="mt-6 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+            onClick={() => { setErr(null); reload(); }}
           >
             Try again
           </button>
@@ -213,1119 +188,905 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     );
   }
 
-  const defaultQrImageSrc = "/images/default-qr.png";
+  // QR not yet dispatched OR explicitly blocked → show the "Not Active" screen
+  // (matches the design: no admin/dispatch text, no footer).
+  const isNotActive = data.phase === "blocked" || data.phase === "dispatch";
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-8 sm:max-w-2xl sm:px-6 sm:py-12">
-      <header className="mb-8 sm:mb-10">
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-gray-50/80 px-5 py-8 text-center shadow-md dark:border-white/10 dark:from-[#0e1726] dark:to-[#0b1420]">
-          <div className="mx-auto mb-4 inline-flex rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 dark:bg-black/30 dark:ring-white/10">
-            <Image
-              src={resolveBackendImageSrc(data.defaultImagePath, defaultQrImageSrc) as string}
-              alt=""
-              width={96}
-              height={96}
-              className="rounded-xl object-cover sm:h-24 sm:w-24"
-              onError={(e) => {
-                const el = e.currentTarget;
-                if (!el.src.endsWith("default-qr.png")) {
-                  el.src = defaultQrImageSrc;
-                }
-              }}
-            />
-          </div>
-          <p className="font-mono text-2xl font-bold tracking-[0.2em] text-primary sm:text-3xl">
-            {data.uniqueId}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-              {data.category}
-            </span>
-            {data.assetName ? (
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {data.assetName}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-            Total scans recorded:{" "}
-            <strong className="text-gray-900 dark:text-white">
-              {data.scans}
-            </strong>
-          </p>
-        </div>
-      </header>
-
-      {data.phase === "blocked" && (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center dark:border-white/10 dark:bg-white/5">
-          <p className="text-lg font-semibold text-gray-900 dark:text-white">
-            Unavailable
-          </p>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            This QR is not available — it may be disabled or expired.
-          </p>
-        </div>
-      )}
-
-      {data.phase === "dispatch" && !session && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center dark:border-amber-500/30 dark:bg-amber-500/10">
-          <p className="text-lg font-semibold text-amber-700 dark:text-amber-400">
-            Sign in required
-          </p>
-          <p className="mt-2 text-sm text-amber-600 dark:text-amber-300">
-            Contact admin to dispatch this QR This QR is not yet dispatched.
-          </p>
-
-        </div>
-      )}
-
-      {data.phase === "dispatch" && session && (
-        <DispatchSection
-          uniqueId={uniqueId}
-          data={data}
-          session={session}
-          isStaff={isStaff}
-          router={router}
-          onDone={reload}
-          adminOrigin={ADMIN_ORIGIN}
-        />
-      )}
-
+    <div className="mx-auto max-w-md bg-white min-h-screen">
+      {isNotActive && <BlockedSection />}
       {data.phase === "activate" && (
-        <ActivateSection
-          uniqueId={uniqueId}
-          category={data.category}
-          router={router}
-          adminOrigin={ADMIN_ORIGIN}
-        />
+        <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} router={router} />
       )}
-
       {data.phase === "contact" && (
-        <ContactSection uniqueId={uniqueId} onDone={reload} adminOrigin={ADMIN_ORIGIN} />
+        <ContactSection uniqueId={uniqueId} data={data} onDone={reload} adminOrigin={ADMIN_ORIGIN} />
       )}
+      {!isNotActive && <Footer />}
     </div>
   );
 }
 
-type OrderListRow = {
-  id: string;
-  status: string;
-  totalAmount: string | number | null;
-  shippingName: string | null;
-  customerName: string | null;
-  items?: Array<{ name?: string | null; sku?: string | null; options?: unknown }> | null;
-};
-
-function DispatchSection({
-  uniqueId,
-  data,
-  session,
-  isStaff,
-  router,
-  onDone,
-  adminOrigin,
-}: {
-  uniqueId: string;
-  data: LandingData;
-  session: ReturnType<typeof useSession>["data"];
-  isStaff: boolean;
-  router: ReturnType<typeof useRouter>;
-  onDone: () => void;
-  adminOrigin: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [orderId, setOrderId] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [orders, setOrders] = useState<OrderListRow[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
-  const [manualOrderId, setManualOrderId] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setOrdersLoading(true);
-    setOrdersError(null);
-    (async () => {
-      try {
-        const category = String(data.category || "").trim().toLowerCase();
-        const url = category
-          ? `${adminOrigin}/api/orders?limit=150&page=1&category=${encodeURIComponent(
-            category
-          )}`
-          : `${adminOrigin}/api/orders?limit=150&page=1`;
-        const res = await fetch(url);
-        const json = await res.json();
-        if (cancelled) return;
-        if (json.success && Array.isArray(json.data)) {
-          setOrders(json.data as OrderListRow[]);
-        } else {
-          setOrders([]);
-          setOrdersError(json.message || "Could not load orders");
-        }
-      } catch {
-        if (!cancelled) {
-          setOrders([]);
-          setOrdersError("Could not load orders");
-        }
-      } finally {
-        if (!cancelled) setOrdersLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, data.category, adminOrigin]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setMsg(null);
-    try {
-      const res = await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/dispatch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: orderId.trim(),
-          notes,
-          metadata: {
-            dispatcherName: session?.user?.name || data.prefill?.name,
-            dispatcherEmail: session?.user?.email || data.prefill?.email,
-          },
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setMsg("Dispatched successfully.");
-        if (isStaff) {
-          router.push("/qr-dispatch");
-          return;
-        }
-        onDone();
-      } else {
-        setMsg(json.message || "Failed");
-      }
-    } catch {
-      setMsg("Network error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+function BlockedSection() {
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0e1726]">
-      <div className="border-b border-gray-100 bg-gradient-to-r from-primary/5 to-transparent px-5 py-4 dark:border-white/10 dark:from-primary/10">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-sm font-bold text-primary">
-            1
-          </span>
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-              Dispatch this QR
-            </h2>
-            <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-              Link this code to an order so the buyer can register and activate it.
-            </p>
-          </div>
-        </div>
+    <div className="flex flex-col items-center pt-12 px-6">
+      <div className="h-24 w-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+        <AlertTriangle className="h-12 w-12 text-red-500" />
       </div>
-      <div className="p-5 sm:p-6">
-        {!open ? (
-          <button
-            type="button"
-            className="w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-primary/90 hover:shadow-md"
-            onClick={() => {
-              setOpen(true);
-              setOrderId("");
-              setNotes("");
-              setMsg(null);
-              setManualOrderId(false);
-            }}
-          >
-            Start dispatch
-          </button>
-        ) : (
-          <form onSubmit={submit} className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-                Order
-              </label>
-              {ordersLoading ? (
-                <div className="flex min-h-[46px] items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-500 dark:border-white/10 dark:bg-white/5">
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
-                  Loading recent orders…
-                </div>
-              ) : !manualOrderId && orders.length > 0 ? (
-                <>
-                  <select
-                    className="min-h-[46px] w-full rounded-xl border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-[#131c2e] dark:text-white"
-                    value={orderId}
-                    onChange={(e) => setOrderId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select an order…</option>
-                    {orders.map((o) => {
-                      const label = o.id.slice(0, 8).toUpperCase();
-                      const who = o.shippingName || o.customerName || "Guest";
-                      const total = parseFloat(String(o.totalAmount ?? 0)).toFixed(2);
-                      return (
-                        <option key={o.id} value={o.id}>
-                          #{label}… · {who} · ₹{total} · {o.status}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <button
-                    type="button"
-                    className="mt-2 text-sm font-medium text-primary hover:underline"
-                    onClick={() => {
-                      setManualOrderId(true);
-                      setOrderId("");
-                    }}
-                  >
-                    Enter order ID manually instead
-                  </button>
-                </>
-              ) : (
-                <>
-                  {ordersError && (
-                    <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                      {ordersError} — paste the full order UUID below.
-                    </p>
-                  )}
-                  <input
-                    className="min-h-[46px] w-full rounded-xl border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-[#131c2e] dark:text-white"
-                    value={orderId}
-                    onChange={(e) => setOrderId(e.target.value)}
-                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    required
-                    autoComplete="off"
-                  />
-                  {orders.length > 0 && (
-                    <button
-                      type="button"
-                      className="mt-2 text-sm font-medium text-primary hover:underline"
-                      onClick={() => {
-                        setManualOrderId(false);
-                        setOrderId("");
-                      }}
-                    >
-                      Choose from list instead
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-                Notes <span className="font-normal text-gray-500">(optional)</span>
-              </label>
-              <textarea
-                className="min-h-[96px] w-full rounded-xl border-gray-300 dark:border-white/10 dark:bg-[#131c2e] dark:text-white"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Internal note for this dispatch…"
-              />
-            </div>
-            {session?.user && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50/90 px-4 py-3 text-xs text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
-                <span className="font-medium text-gray-900 dark:text-white">
-                  Signed in
-                </span>{" "}
-                — {session.user.name || session.user.email}. Dispatcher details
-                will be stored with this dispatch.
-              </div>
-            )}
-            {msg && (
-              <p
-                className={`rounded-xl px-4 py-3 text-sm font-medium ${msg.includes("success") || msg.includes("Dispatched")
-                  ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-                  : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                  }`}
-              >
-                {msg}
-              </p>
-            )}
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                className="w-full rounded-xl border border-red-200 px-4 py-3 font-semibold text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 sm:w-auto sm:min-w-[120px]"
-                onClick={() => {
-                  setOpen(false);
-                  setOrderId("");
-                  setNotes("");
-                  setMsg(null);
-                  setManualOrderId(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary/90 sm:w-auto sm:min-w-[180px]"
-                disabled={saving}
-              >
-                {saving ? "Saving…" : "Submit dispatch"}
-              </button>
-            </div>
-          </form>
-        )}
+      <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">This QR Code is<br />Not Active</h2>
+      <p className="text-center text-gray-500 mb-8 px-4 text-sm leading-relaxed">
+        This QR hasn't been linked to an owner yet or is temporarily disabled.
+      </p>
+      <div className="w-full space-y-3">
+        <button className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2">
+          <Headset className="w-5 h-5" />
+          Contact Support
+        </button>
+        <button className="w-full bg-white border border-blue-200 text-blue-600 rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 shadow-sm">
+          <Phone className="w-5 h-5" />
+          Call Support
+        </button>
       </div>
-    </section>
+      <div className="w-full mt-8 flex items-center justify-center gap-3 bg-[#F4F7FF] p-4 rounded-xl">
+        <ShieldCheck className="w-5 h-5 text-blue-600" />
+        <p className="text-xs text-gray-600 font-medium leading-tight">Only verified owners can<br />activate Odokho QR</p>
+      </div>
+    </div>
   );
 }
 
-function ActivateSection({
-  uniqueId,
-  category,
-  router,
-  adminOrigin,
-}: {
-  uniqueId: string;
-  category: string;
-  router: ReturnType<typeof useRouter>;
-  adminOrigin: string;
-}) {
-  const showVehicle = isVehicleQrCategory(category);
-  const showPet = isPetQrCategory(category);
+// Reusable input styles
+const fieldClass =
+  "w-full border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white font-medium placeholder-gray-400 shadow-sm";
+const labelClass = "block text-[11px] font-bold text-gray-900 mb-1.5";
+const sectionTitleClass =
+  "flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-blue-700 mb-3";
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div className={sectionTitleClass}>
+      <span className="bg-blue-50 text-blue-700 rounded-md p-1">{icon}</span>
+      {title}
+    </div>
+  );
+}
 
+function ActivateSection({ uniqueId, category, prefill }: any) {
+  const isVehicle = isVehicleQrCategory(category);
+  const isPet = isPetQrCategory(category);
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  // personal
+  const [fullName, setFullName] = useState<string>(prefill?.name || "");
+  const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>(prefill?.email || "");
+  const [address, setAddress] = useState<string>("");
+
+  // vehicle
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [vehicleReg, setVehicleReg] = useState("");
   const [vehicleNickname, setVehicleNickname] = useState("");
-  const [vehicleVariant, setVehicleVariant] = useState("");
-  const [vehicleYear, setVehicleYear] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
-  const [vehicleVin, setVehicleVin] = useState("");
-  const [vehicleFuel, setVehicleFuel] = useState("");
-  const [vehicleInsuranceNo, setVehicleInsuranceNo] = useState("");
+  const [vehicleYear, setVehicleYear] = useState("");
 
+  // pet
   const [petName, setPetName] = useState("");
   const [petSpecies, setPetSpecies] = useState("");
   const [petBreed, setPetBreed] = useState("");
   const [petNotes, setPetNotes] = useState("");
 
-  const [ecPhone1, setEcPhone1] = useState("");
-  const [ecPhone2, setEcPhone2] = useState("");
+  // emergency
+  const [emergency1, setEmergency1] = useState("");
+  const [emergency2, setEmergency2] = useState("");
 
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const heading = isVehicle
+    ? "Activate Your Vehicle QR"
+    : isPet
+      ? "Activate Your Pet QR"
+      : "Activate Your Smart QR";
 
-  const categoryLabel = category.trim() || "This item";
+  const subheading = isVehicle
+    ? "Let people reach you about your vehicle without exposing your number."
+    : isPet
+      ? "If your pet is found, the finder can reach you safely and instantly."
+      : "Help people contact you securely if your tagged item is found.";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setMsg(null);
+    setError("");
+
+    if (!emergency1.trim() || !emergency2.trim()) {
+      setError("Please enter both emergency contact numbers.");
+      return;
+    }
+    if (emergency1.replace(/\D/g, "") === emergency2.replace(/\D/g, "")) {
+      setError("Emergency Contact 1 and 2 must be different numbers.");
+      return;
+    }
+
     try {
-      const res = await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/activate`, {
+      setSaving(true);
+
+      const payload: Record<string, unknown> = {
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+        address: address.trim() || undefined,
+        emergencyPhones: [emergency1.trim(), emergency2.trim()],
+      };
+
+      if (isVehicle) {
+        payload.vehicleMake = vehicleMake.trim();
+        payload.vehicleModel = vehicleModel.trim();
+        payload.vehicleReg = vehicleReg.trim();
+        if (vehicleNickname.trim()) payload.vehicleNickname = vehicleNickname.trim();
+        if (vehicleColor.trim()) payload.vehicleColor = vehicleColor.trim();
+        if (vehicleYear.trim()) payload.vehicleYear = vehicleYear.trim();
+      }
+
+      if (isPet) {
+        payload.petName = petName.trim();
+        if (petSpecies.trim()) payload.petSpecies = petSpecies.trim();
+        if (petBreed.trim()) payload.petBreed = petBreed.trim();
+        if (petNotes.trim()) payload.petNotes = petNotes.trim();
+      }
+
+      const res = await fetch(`/api/public/qr/${uniqueId}/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName,
-          phone,
-          email: email || null,
-          address,
-          vehicleMake: showVehicle ? vehicleMake : undefined,
-          vehicleModel: showVehicle ? vehicleModel : undefined,
-          vehicleReg: showVehicle ? vehicleReg : undefined,
-          vehicleNickname: showVehicle ? vehicleNickname || null : undefined,
-          vehicleVariant: showVehicle ? vehicleVariant || null : undefined,
-          vehicleYear: showVehicle ? vehicleYear || null : undefined,
-          vehicleColor: showVehicle ? vehicleColor || null : undefined,
-          vehicleVin: showVehicle ? vehicleVin || null : undefined,
-          vehicleFuel: showVehicle ? vehicleFuel || null : undefined,
-          vehicleInsuranceNo: showVehicle ? vehicleInsuranceNo || null : undefined,
-          petName: showPet ? petName : undefined,
-          petSpecies: showPet ? petSpecies || null : undefined,
-          petBreed: showPet ? petBreed || null : undefined,
-          petNotes: showPet ? petNotes || null : undefined,
-          emergencyPhones: [ecPhone1.trim(), ecPhone2.trim()],
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (json.success) {
-        setMsg("Profile saved. QR is now activated.");
-        router.push(`/qr/${uniqueId}/profile`);
-      } else {
-        setMsg(json.message || "Failed");
+
+      if (!json.success) {
+        setError(json.message || "Activation failed");
+        return;
       }
-    } catch {
-      setMsg("Network error");
+      window.location.href = "/dashboard";
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  const fieldClass =
-    "min-h-[48px] w-full rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-primary focus:ring-primary/20 dark:border-white/15 dark:bg-[#131c2e] dark:text-white px-3 py-2";
-
-  const sectionShell =
-    "relative overflow-hidden rounded-2xl border border-gray-200/90 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#131c2e]/80 sm:p-6";
-  const sectionTitle = "text-base font-bold text-gray-900 dark:text-white";
-  const sectionHint = "mt-1 text-sm text-gray-500 dark:text-gray-400";
-  const labelClass = "mb-2 block text-sm font-semibold text-gray-900 dark:text-white";
-
   return (
-    <form
-      id="qr-activate-form"
-      onSubmit={submit}
-      className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0e1726]"
-    >
-      <div className="border-b border-gray-100 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-5 dark:border-white/10 sm:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-sm font-bold text-primary">
-            2
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Register and activate
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              Complete your details so finders can reach the right people. This QR is for{" "}
-              <span className="font-semibold text-primary">{categoryLabel}</span>.
-            </p>
-          </div>
-        </div>
+    <div className="flex flex-col px-5 pt-8 pb-6">
+      {/* Hero */}
+      <div className="mb-6">
+        <h2 className="text-[26px] font-bold text-gray-900 leading-tight tracking-tight">{heading}</h2>
+        <p className="text-sm text-gray-500 mt-2 leading-relaxed">{subheading}</p>
       </div>
 
-      <div className="space-y-5 p-5 pb-24 sm:space-y-6 sm:p-6 sm:pb-6">
-        <div className={sectionShell}>
-          <div className="border-l-4 border-primary pl-4">
-            <h3 className={sectionTitle}>Your details</h3>
-            <p className={sectionHint}>Primary owner or account holder for this QR.</p>
+      {/* Trust badges */}
+      <div className="grid grid-cols-3 gap-3 mb-7">
+        {[
+          { icon: <Lock className="w-4 h-4 text-white" />, label: "Privacy\nProtected" },
+          { icon: <Phone className="w-4 h-4 text-white" />, label: "Secure\nCalling" },
+          { icon: <ShieldCheck className="w-4 h-4 text-white" />, label: "Enhanced\nSafety" },
+        ].map((b) => (
+          <div key={b.label} className="flex flex-col items-center gap-2 text-center bg-blue-50/60 rounded-xl py-3">
+            <div className="bg-blue-600 rounded-lg p-1.5">{b.icon}</div>
+            <span className="text-[10px] font-bold text-gray-700 whitespace-pre-line leading-tight">
+              {b.label}
+            </span>
           </div>
-          <div className="mt-5 space-y-4">
+        ))}
+      </div>
+
+      <form onSubmit={submit} className="space-y-7">
+        {/* Personal */}
+        <section>
+          <SectionHeader icon={<BadgeCheck className="w-3.5 h-3.5" />} title="Personal Information" />
+          <div className="space-y-4">
             <div>
-              <label className={labelClass}>
-                Full name <span className="text-red-500">*</span>
-              </label>
+              <label className={labelClass}>Full Name</label>
               <input
-                className={fieldClass}
+                required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                required
-                autoComplete="name"
+                className={fieldClass}
+                placeholder="Enter your full name"
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>
-                  Phone <span className="text-red-500">*</span>
-                </label>
+
+            <div>
+              <label className={labelClass}>Mobile Number</label>
+              <div className="flex gap-2 shadow-sm rounded-xl">
+                <div className="relative w-[85px]">
+                  <select className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] bg-white font-bold text-gray-900 outline-none">
+                    <option>+91</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-900" />
+                </div>
                 <input
-                  className={fieldClass}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
                   required
-                  inputMode="tel"
-                  autoComplete="tel"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Email <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] outline-none bg-white font-medium placeholder-gray-400"
+                  placeholder="Enter mobile number"
                 />
               </div>
             </div>
+
             <div>
-              <label className={labelClass}>
-                Address <span className="font-normal text-gray-500">(optional)</span>
-              </label>
-              <textarea
-                className="min-h-[100px] w-full rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-primary focus:ring-primary/20 dark:border-white/15 dark:bg-[#131c2e] dark:text-white px-3 py-2"
+              <label className={labelClass}>Email <span className="text-gray-400 font-medium">(optional)</span></label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={fieldClass}
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Address <span className="text-gray-400 font-medium">(optional)</span></label>
+              <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                autoComplete="street-address"
+                className={fieldClass}
+                placeholder="House/Street, City"
               />
             </div>
           </div>
-        </div>
+        </section>
 
-        {showVehicle && (
-          <div className={sectionShell}>
-            <div className="border-l-4 border-primary pl-4">
-              <h3 className={sectionTitle}>Vehicle details</h3>
-              <p className={sectionHint}>
-                Required: make, model, and registration. Add the rest so responders have full context.
-              </p>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>
-                  Make (brand) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={vehicleMake}
-                  onChange={(e) => setVehicleMake(e.target.value)}
-                  required={showVehicle}
-                  placeholder="e.g. Maruti Suzuki"
-                  autoComplete="off"
-                />
+        {/* Vehicle Details */}
+        {isVehicle && (
+          <section>
+            <SectionHeader icon={<CheckCircle2 className="w-3.5 h-3.5" />} title="Vehicle Details" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Make</label>
+                  <input
+                    required
+                    value={vehicleMake}
+                    onChange={(e) => setVehicleMake(e.target.value)}
+                    className={fieldClass}
+                    placeholder="e.g. Hyundai"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Model</label>
+                  <input
+                    required
+                    value={vehicleModel}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                    className={fieldClass}
+                    placeholder="e.g. i20"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className={labelClass}>
-                  Model <span className="text-red-500">*</span>
-                </label>
+                <label className={labelClass}>Registration Number</label>
                 <input
-                  className={fieldClass}
-                  value={vehicleModel}
-                  onChange={(e) => setVehicleModel(e.target.value)}
-                  required={showVehicle}
-                  placeholder="e.g. Swift"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Variant / trim <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={vehicleVariant}
-                  onChange={(e) => setVehicleVariant(e.target.value)}
-                  placeholder="e.g. ZXI+ AMT"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Year <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={vehicleYear}
-                  onChange={(e) => setVehicleYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="e.g. 2022"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Registration number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={fieldClass}
+                  required
                   value={vehicleReg}
                   onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
-                  required={showVehicle}
-                  placeholder="e.g. KA01AB1234"
-                  autoComplete="off"
+                  className={fieldClass}
+                  placeholder="e.g. GJ01AB1234"
                 />
               </div>
+
               <div>
                 <label className={labelClass}>
-                  Colour <span className="font-normal text-gray-500">(optional)</span>
+                  Nickname <span className="text-gray-400 font-medium">(optional)</span>
                 </label>
                 <input
-                  className={fieldClass}
-                  value={vehicleColor}
-                  onChange={(e) => setVehicleColor(e.target.value)}
-                  placeholder="e.g. Pearl white"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  VIN / chassis <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={vehicleVin}
-                  onChange={(e) => setVehicleVin(e.target.value.toUpperCase())}
-                  placeholder="17-character VIN if known"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Fuel type <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={vehicleFuel}
-                  onChange={(e) => setVehicleFuel(e.target.value)}
-                  placeholder="Petrol / Diesel / EV…"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelClass}>
-                  Vehicle nickname <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
                   value={vehicleNickname}
                   onChange={(e) => setVehicleNickname(e.target.value)}
-                  placeholder="What you call this vehicle"
-                  autoComplete="off"
+                  className={fieldClass}
+                  placeholder="e.g. My Daily Ride"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className={labelClass}>
-                  Insurance policy number <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={vehicleInsuranceNo}
-                  onChange={(e) => setVehicleInsuranceNo(e.target.value)}
-                  autoComplete="off"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>
+                    Color <span className="text-gray-400 font-medium">(optional)</span>
+                  </label>
+                  <input
+                    value={vehicleColor}
+                    onChange={(e) => setVehicleColor(e.target.value)}
+                    className={fieldClass}
+                    placeholder="e.g. White"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    Year <span className="text-gray-400 font-medium">(optional)</span>
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    value={vehicleYear}
+                    onChange={(e) => setVehicleYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    className={fieldClass}
+                    placeholder="e.g. 2022"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </section>
         )}
 
-        {showPet && (
-          <div className={sectionShell}>
-            <div className="border-l-4 border-primary pl-4">
-              <h3 className={sectionTitle}>Pet details</h3>
-              <p className={sectionHint}>Help others identify your pet if this tag is found.</p>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className={labelClass}>
-                  Pet name <span className="text-red-500">*</span>
-                </label>
+        {/* Pet Details */}
+        {isPet && (
+          <section>
+            <SectionHeader icon={<CheckCircle2 className="w-3.5 h-3.5" />} title="Pet Details" />
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>Pet Name</label>
                 <input
-                  className={fieldClass}
+                  required
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
-                  required={showPet}
-                  autoComplete="off"
+                  className={fieldClass}
+                  placeholder="e.g. Bruno"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>
+                    Species <span className="text-gray-400 font-medium">(optional)</span>
+                  </label>
+                  <input
+                    value={petSpecies}
+                    onChange={(e) => setPetSpecies(e.target.value)}
+                    className={fieldClass}
+                    placeholder="Dog / Cat / Other"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    Breed <span className="text-gray-400 font-medium">(optional)</span>
+                  </label>
+                  <input
+                    value={petBreed}
+                    onChange={(e) => setPetBreed(e.target.value)}
+                    className={fieldClass}
+                    placeholder="e.g. Labrador"
+                  />
+                </div>
               </div>
               <div>
                 <label className={labelClass}>
-                  Species <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={petSpecies}
-                  onChange={(e) => setPetSpecies(e.target.value)}
-                  placeholder="Dog, cat…"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Breed <span className="font-normal text-gray-500">(optional)</span>
-                </label>
-                <input
-                  className={fieldClass}
-                  value={petBreed}
-                  onChange={(e) => setPetBreed(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelClass}>
-                  Identifying notes <span className="font-normal text-gray-500">(optional)</span>
+                  Notes for Finder <span className="text-gray-400 font-medium">(optional)</span>
                 </label>
                 <textarea
-                  className="min-h-[88px] w-full rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm dark:border-white/15 dark:bg-[#131c2e] dark:text-white px-3 py-2"
+                  rows={3}
                   value={petNotes}
                   onChange={(e) => setPetNotes(e.target.value)}
-                  placeholder="Colour marks, medical notes finders should know…"
+                  className={`${fieldClass} resize-none`}
+                  placeholder="e.g. Friendly, not microchipped, on medication"
                 />
               </div>
             </div>
-          </div>
+          </section>
         )}
 
-        <div className={sectionShell}>
-          <div className="border-l-4 border-amber-500 pl-4">
-            <h3 className={sectionTitle}>Emergency phone numbers</h3>
-            <p className={sectionHint}>
-              Enter <strong className="font-semibold text-gray-900 dark:text-white">two different phone numbers</strong> we can call or SMS if
-              this QR is used in an emergency. Numbers only — both are required.
-            </p>
-          </div>
-          <div className="mt-5 space-y-4">
-            <div>
-              <label className={labelClass}>
-                Emergency number 1 <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={fieldClass}
-                value={ecPhone1}
-                onChange={(e) => setEcPhone1(e.target.value)}
-                required
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="+91 …"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>
-                Emergency number 2 <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={fieldClass}
-                value={ecPhone2}
-                onChange={(e) => setEcPhone2(e.target.value)}
-                required
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="+91 …"
-              />
-            </div>
-          </div>
-        </div>
-
-        {msg && (
-          <p
-            className={`rounded-xl px-4 py-3 text-sm font-medium ${msg.includes("success") || msg.includes("activated") || msg.includes("Profile saved")
-              ? "bg-green-50 text-green-700 dark:bg-green-500/20 dark:text-green-400"
-              : "bg-red-50 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-              }`}
-          >
-            {msg}
+        {/* Emergency Contacts */}
+        <section>
+          <SectionHeader icon={<AlertCircle className="w-3.5 h-3.5" />} title="Emergency Contacts" />
+          <p className="text-[12px] text-gray-500 -mt-1 mb-3">
+            Two different numbers we can alert if something happens.
           </p>
-        )}
-        <button
-          type="submit"
-          className="hidden w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white shadow-md hover:bg-primary/90 sm:block"
-          disabled={saving}
-        >
-          {saving ? "Saving…" : "Activate QR and open profile"}
-        </button>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/90 p-3 backdrop-blur dark:border-white/10 dark:bg-[#0e1726]/90 sm:hidden">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-              Activating QR: <span className="font-mono font-semibold text-primary">{uniqueId}</span>
-            </p>
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>Emergency Contact 1</label>
+              <input
+                required
+                type="tel"
+                inputMode="numeric"
+                value={emergency1}
+                onChange={(e) => setEmergency1(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                className={fieldClass}
+                placeholder="Enter number"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Emergency Contact 2</label>
+              <input
+                required
+                type="tel"
+                inputMode="numeric"
+                value={emergency2}
+                onChange={(e) => setEmergency2(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                className={fieldClass}
+                placeholder="Enter number"
+              />
+            </div>
           </div>
+        </section>
+
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="pt-1">
           <button
-            form="qr-activate-form"
             type="submit"
-            className="flex min-w-[180px] items-center justify-center rounded-xl bg-primary py-3 text-sm font-semibold text-white hover:bg-primary/90"
             disabled={saving}
+            className="w-full bg-[#1E62F1] hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl py-4 text-[15px] font-bold shadow-md transition"
           >
-            {saving ? "Saving…" : "Activate"}
+            {saving ? "Activating…" : "Activate QR"}
           </button>
+          <p className="text-[11px] text-center text-gray-400 mt-3">
+            By activating you agree to our privacy-first contact flow.
+          </p>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
 
-function ContactSection({ uniqueId, onDone, adminOrigin }: { uniqueId: string; onDone: () => void; adminOrigin: string }) {
-  const [reason, setReason] = useState("GENERAL");
-  const [message, setMessage] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
-  const [emergencyBusy, setEmergencyBusy] = useState(false);
-  const [emergencyNote, setEmergencyNote] = useState<string | null>(null);
+function ContactSection({ uniqueId, data }: any) {
+  const [view, setView] = useState<"contact" | "verify" | "emergency">("contact");
+  const defaultQrImageSrc = "/images/default-qr.png";
+  const bgImg = data?.defaultImagePath ? resolveBackendImageSrc(data.defaultImagePath, defaultQrImageSrc) : defaultQrImageSrc;
 
-  type CallState = "idle" | "submitting" | "allocated" | "calling" | "failed";
-  const [callState, setCallState] = useState<CallState>("idle");
-  const [callData, setCallData] = useState<{ did: string; connectionId: string } | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  if (view === "verify") return <VerifyNumberView setView={setView} />;
+  if (view === "emergency") return <ReportEmergencyView setView={setView} uniqueId={uniqueId} />;
 
-  const deallocateMaskedCall = useCallback(
-    async (connectionId: string) => {
-      if (!connectionId) return;
-      try {
-        await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/masked-call`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ connectionId }),
-          keepalive: true,
-        });
-      } catch {
-        // ignore
-      } finally {
-        setCallData(null);
-        setCallState("idle");
-      }
-    },
-    [uniqueId, adminOrigin]
-  );
-
-  const openDialer = useCallback((did: string) => {
-    setCallState("calling");
-    window.location.href = `tel:${did}`;
-  }, []);
-
-  useEffect(() => {
-    const sendDeallocationBeacon = () => {
-      if (!callData?.connectionId || typeof navigator === "undefined" || !navigator.sendBeacon) return;
-      const body = JSON.stringify({ action: "deallocate", connectionId: callData.connectionId });
-      const blob = new Blob([body], { type: "application/json" });
-      navigator.sendBeacon(`${adminOrigin}/api/public/qr/${uniqueId}/masked-call`, blob);
-    };
-
-    window.addEventListener("beforeunload", sendDeallocationBeacon);
-    return () => window.removeEventListener("beforeunload", sendDeallocationBeacon);
-  }, [callData?.connectionId, uniqueId, adminOrigin]);
-
-  const submitContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCallState("submitting");
-    setErrorMessage(null);
-    setCallData(null);
-    try {
-      const res = await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason, message: message || null, contactPhone }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        setCallState("failed");
-        setErrorMessage(json.message || "Failed to send contact request");
-        return;
-      }
-
-      try {
-        const callRes = await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/masked-call`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callerNumber: contactPhone }),
-        });
-
-        const callJson = await callRes.json().catch(() => ({}));
-        if (callRes.ok && callJson?.success) {
-          const did = String(callJson?.did || "").trim();
-          const connectionId = String(callJson?.connectionId || "").trim();
-          if (did && connectionId) {
-            setCallData({ did, connectionId });
-            setCallState("allocated");
-            if (onDone) {
-              onDone();
-            }
-            if (typeof window !== "undefined") {
-              try {
-                const isCoarsePointer =
-                  typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
-                const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-                if (isCoarsePointer || isTouch) {
-                  openDialer(did);
-                }
-              } catch {
-                // ignore
-              }
-            }
-          } else {
-            setCallState("failed");
-            setErrorMessage("Request recorded, but masked call allocation failed");
-          }
-        } else {
-          setCallState("failed");
-          setErrorMessage(
-            callJson?.message
-              ? `Request recorded, but masked call could not be started: ${callJson.message}`
-              : "Request recorded, but masked call could not be started."
-          );
-        }
-      } catch {
-        setCallState("failed");
-        setErrorMessage("Request recorded, but masked call could not be started.");
-      }
-    } catch {
-      setCallState("failed");
-      setErrorMessage("Network error");
-    }
-  };
-
-  const sendEmergency = async () => {
-    if (!emergencyPhone.trim()) {
-      setEmergencyNote("Enter your contact number for emergency.");
-      return;
-    }
-    setEmergencyBusy(true);
-    setEmergencyNote(null);
-    try {
-      const pos = await new Promise<GeolocationPosition | null>((resolve) => {
-        if (!navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (p) => resolve(p),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 12000 }
-        );
-      });
-      const lat = pos ? String(pos.coords.latitude) : null;
-      const lng = pos ? String(pos.coords.longitude) : null;
-      const res = await fetch(`${adminOrigin}/api/public/qr/${uniqueId}/emergency`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contactPhone: emergencyPhone.trim(),
-          latitude: lat,
-          longitude: lng,
-          locationLabel: pos ? "GPS fix" : "Location unavailable",
-        }),
-      });
-      const json = await res.json();
-      setEmergencyNote(json.success ? "Emergency alerts queued." : json.message || "Failed");
-    } catch {
-      setEmergencyNote("Network error");
-    } finally {
-      setEmergencyBusy(false);
-    }
-  };
+  const reasons = ["Wrong Parking", "Lights On", "Door Open", "Tow Alert", "Accident", "Other"];
+  const [selectedReason, setSelectedReason] = useState("Wrong Parking");
 
   return (
-    <div className="space-y-6">
-      <form
-        onSubmit={submitContact}
-        className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0e1726]"
-      >
-        <div className="border-b border-gray-100 bg-gradient-to-r from-primary/5 to-transparent px-5 py-4 dark:border-white/10 dark:from-primary/10">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-sm font-bold text-primary">
-              C
-            </span>
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-                Contact the owner
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                Send a short request. The owner may reach you on the number you provide.
-              </p>
+    <div className="flex flex-col px-4 pt-4 space-y-5">
+      {/* Top Card */}
+      <div className="rounded-[20px] bg-gradient-to-br from-[#1E62F1] to-[#0A41B5] p-4 flex gap-4 text-white shadow-lg relative overflow-hidden items-center h-[120px]">
+        <div className="w-[100px] h-[88px] bg-white/10 rounded-xl flex-shrink-0 flex items-center justify-center relative z-10 overflow-hidden shadow-inner">
+          <Image src={bgImg as string} alt="Vehicle" layout="fill" objectFit="cover" className="rounded-xl" />
+        </div>
+        <div className="flex flex-col justify-center z-10 pt-1">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <h3 className="text-xl font-bold tracking-tight">{data?.assetName || "GJ01AB1234"}</h3>
+            <div className="bg-white rounded-full flex items-center justify-center w-5 h-5">
+              <CheckCircle2 className="w-5 h-5 text-blue-600" />
             </div>
+          </div>
+          <p className="text-blue-100 text-[13px] font-medium leading-snug">Hyundai i20<br />White</p>
+        </div>
+      </div>
+
+      {/* Owner Message */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 px-1">
+          <MessageCircle className="w-4 h-4 text-blue-600 fill-blue-600" />
+          <span className="text-[13px] font-bold text-gray-900">Owner Message</span>
+        </div>
+        <div className="bg-[#F4F7FF] text-gray-800 text-[13px] font-medium p-4 rounded-2xl rounded-tl-sm shadow-sm leading-relaxed">
+          Thanks for caring! Please let me know if there's an issue with my vehicle. 🙏
+        </div>
+      </div>
+
+      {/* Contact Reasons */}
+      <div className="space-y-2.5">
+        <h4 className="text-[13px] font-bold text-gray-900 px-1">Why are you contacting the owner?</h4>
+        <div className="flex flex-wrap gap-2">
+          {reasons.map(r => (
+            <button
+              key={r}
+              onClick={() => setSelectedReason(r)}
+              className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all shadow-sm ${selectedReason === r ? 'bg-[#1E62F1] text-white border border-[#1E62F1]' : 'bg-white border border-gray-200 text-gray-700'}`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="space-y-3 pt-1">
+        <button onClick={() => setView('verify')} className="w-full bg-[#22C55E] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-green-600/30">
+          <div className="flex items-center gap-2 font-bold text-[15px]">
+            <Phone className="w-[18px] h-[18px] fill-white" />
+            Call Owner Securely
+          </div>
+          <span className="text-[11px] text-green-100 font-medium tracking-wide">Connect via masked number</span>
+        </button>
+        <button onClick={() => setView('verify')} className="w-full bg-[#F97316] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-orange-600/30">
+          <div className="flex items-center gap-2 font-bold text-[15px]">
+            <MessageCircle className="w-[18px] h-[18px] fill-white" />
+            SMS Owner Securely
+          </div>
+          <span className="text-[11px] text-orange-100 font-medium tracking-wide">Send a private SMS securely</span>
+        </button>
+        <button onClick={() => setView('emergency')} className="w-full bg-[#EF4444] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-red-600/30">
+          <div className="flex items-center gap-2 font-bold text-[15px]">
+            <AlertTriangle className="w-[18px] h-[18px] fill-white" />
+            Report Emergency
+          </div>
+          <span className="text-[11px] text-red-100 font-medium tracking-wide">Use only in urgent situations</span>
+        </button>
+      </div>
+
+      {/* Info */}
+      <div className="flex items-center justify-center gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-gray-100 mt-2">
+        <ShieldCheck className="w-[22px] h-[22px] text-blue-600 flex-shrink-0" />
+        <p className="text-[11px] text-gray-700 font-medium leading-relaxed">
+          Your number is never shared.<br />Calls are masked for your privacy.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function VerifyNumberView({ setView }: any) {
+  return (
+    <div className="flex flex-col pt-12 px-5">
+      <div className="flex justify-center mb-6">
+        <div className="relative">
+          <div className="w-24 h-24 bg-[#F0F5FF] rounded-full flex items-center justify-center relative z-10 shadow-inner">
+            <ShieldCheck className="w-10 h-10 text-blue-600" />
+          </div>
+          <div className="absolute top-2 -right-4 w-6 h-6 bg-blue-100 rounded-full opacity-60"></div>
+          <div className="absolute bottom-0 -left-6 w-10 h-10 bg-blue-50 rounded-full opacity-80"></div>
+        </div>
+      </div>
+      <h2 className="text-[26px] font-bold text-gray-900 text-center mb-1">Verify Your Number</h2>
+      <p className="text-center text-gray-500 mb-10 px-2 text-[13px] leading-relaxed">
+        We verify your number to prevent<br />misuse and enable secure communication.
+      </p>
+
+      <form className="space-y-6">
+        <div>
+          <label className="block text-[11px] font-bold text-gray-900 mb-1.5">Mobile Number</label>
+          <div className="flex gap-2 shadow-sm rounded-xl">
+            <div className="relative w-[85px]">
+              <select className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-4 text-[14px] bg-white font-bold text-gray-900 outline-none">
+                <option>+91</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-900" />
+            </div>
+            <input className="flex-1 border border-gray-200 rounded-xl px-4 py-4 text-[14px] outline-none bg-white font-medium placeholder-gray-400" placeholder="Enter mobile number" />
           </div>
         </div>
-        <div className="space-y-4 p-5 sm:p-6">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-              Reason
-            </label>
-            <select
-              className="min-h-[46px] w-full rounded-xl border border-gray-300 dark:border-white/10 dark:bg-[#131c2e] dark:text-white px-3"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            >
-              {CONTACT_REASONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+
+        <div>
+          <label className="block text-[11px] font-bold text-gray-900 mb-1.5">Enter OTP</label>
+          <input className="w-full border border-gray-200 rounded-xl px-4 py-4 text-[14px] outline-none bg-white font-medium placeholder-gray-400 shadow-sm" placeholder="Enter 6-digit OTP" />
+          <div className="mt-2 text-right">
+            <button type="button" className="text-[12px] font-bold text-[#1E62F1]">Resend OTP (00:30)</button>
           </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-              Message <span className="font-normal text-gray-500">(optional)</span>
-            </label>
-            <textarea
-              className="min-h-[100px] w-full rounded-xl border border-gray-300 dark:border-white/10 dark:bg-[#131c2e] dark:text-white px-3 py-2"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Briefly describe how you found this or what you need…"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-              Your phone number
-            </label>
-            <input
-              className="min-h-[46px] w-full rounded-xl border border-gray-300 dark:border-white/10 dark:bg-[#131c2e] dark:text-white px-3"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              required
-              inputMode="tel"
-              placeholder="Used for a possible callback"
-            />
-          </div>
-          {callState === "allocated" && callData && (
-            <div className="rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-700 dark:bg-green-500/20 dark:text-green-400">
-              <p className="mb-3">Masked call ready. Dial {callData.did} to connect.</p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  className="min-h-[42px] rounded-xl border border-gray-300 bg-white font-mono text-sm px-3 dark:border-white/10 dark:bg-black/20 sm:max-w-[190px]"
-                  value={callData.did}
-                  readOnly
-                />
-                <a
-                  href={`tel:${callData.did}`}
-                  onClick={() => openDialer(callData.did)}
-                  className="w-full rounded-xl bg-primary py-2.5 text-center text-sm font-semibold text-white sm:w-auto px-4"
-                >
-                  Call now
-                </a>
-                <button
-                  type="button"
-                  onClick={() => deallocateMaskedCall(callData.connectionId)}
-                  className="w-full rounded-xl border border-red-500 py-2.5 text-center text-sm font-semibold text-red-600 sm:w-auto px-4 hover:bg-red-50"
-                >
-                  End call
-                </button>
-              </div>
-            </div>
-          )}
-          {callState === "failed" && errorMessage && (
-            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:bg-red-500/20 dark:text-red-400">
-              <p>{errorMessage}</p>
-            </div>
-          )}
-          {callState === "calling" && (
-            <div className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-              <p>Call in progress…</p>
-            </div>
-          )}
-          <button
-            type="submit"
-            className="w-full rounded-xl bg-primary py-3.5 text-base font-semibold text-white shadow-sm hover:bg-primary/90"
-            disabled={callState === "submitting" || callState === "allocated" || callState === "calling"}
-          >
-            {callState === "submitting" ? "Calling Now…" : "Call Now"}
+        </div>
+
+        <div className="pt-2">
+          <button type="button" className="w-full bg-[#1E62F1] text-white rounded-xl py-4 font-bold shadow-md text-[15px]">
+            Verify & Continue
           </button>
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border-2 border-red-500/40 bg-gradient-to-b from-red-500/[0.08] to-red-500/[0.04] p-5 shadow-md dark:border-red-500/50 dark:from-red-500/20 dark:to-red-500/10 sm:p-6">
-        <div className="text-center">
-          <span className="inline-flex items-center justify-center rounded-full bg-red-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-600">
-            Serious use only
-          </span>
-          <h3 className="mt-3 text-xl font-bold text-red-600">Emergency alert</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-700 dark:text-gray-200">
-            Notifies all emergency contacts. Location is shared when you allow browser access.
-          </p>
+      <div className="mt-8 flex items-center justify-center gap-3 bg-[#F4F7FF] p-4 rounded-xl">
+        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
+        <p className="text-[12px] font-medium text-gray-800 leading-relaxed">
+          We never share your number<br />with the vehicle owner.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ReportEmergencyView({ setView, uniqueId }: any) {
+  const issues = [
+    { id: "accident", label: "Accident" },
+    { id: "damage", label: "Vehicle Damage" },
+    { id: "blocking", label: "Blocking Access" },
+    { id: "other", label: "Other" },
+  ];
+
+  const [step, setStep] = useState<"form" | "verify">("form");
+  const [selectedIssue, setSelectedIssue] = useState("accident");
+  const [useLocation, setUseLocation] = useState(true);
+  const [coords, setCoords] = useState<{ lat: string | null; lng: string | null }>({ lat: null, lng: null });
+
+  const [contactPhone, setContactPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // cooldown countdown
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const getCoords = useCallback(async (): Promise<{ lat: string | null; lng: string | null }> => {
+    if (!useLocation || typeof navigator === "undefined" || !navigator.geolocation) {
+      return { lat: null, lng: null };
+    }
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
+        () => resolve({ lat: null, lng: null }),
+        { timeout: 6000 },
+      );
+    });
+  }, [useLocation]);
+
+  const issueLabel = issues.find((i) => i.id === selectedIssue)?.label || "Emergency";
+
+  const requestOtp = async () => {
+    setError("");
+    setSuccess("");
+    if (!/^\d{8,15}$/.test(contactPhone)) {
+      setError("Enter a valid mobile number (8–15 digits).");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const c = await getCoords();
+      setCoords(c);
+
+      const res = await fetch(`/api/public/qr/${uniqueId}/emergency`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactPhone,
+          latitude: c.lat,
+          longitude: c.lng,
+          locationLabel: issueLabel,
+        }),
+      });
+      const j = await res.json();
+      if (!j.success) {
+        if (typeof j.cooldown === "number") setCooldown(Number(j.cooldown));
+        setError(j.message || "Failed to send OTP. Try again.");
+        return;
+      }
+      setStep("verify");
+      setSuccess("OTP sent to your phone");
+      setCooldown(30);
+    } catch (e) {
+      console.error(e);
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyAndSend = async () => {
+    setError("");
+    setSuccess("");
+    if (!/^\d{4,8}$/.test(otp)) {
+      setError("Enter the OTP sent to your phone.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/public/qr/${uniqueId}/emergency`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactPhone,
+          otp,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          locationLabel: issueLabel,
+        }),
+      });
+      const j = await res.json();
+      if (!j.success) {
+        setError(j.message || "Verification failed");
+        return;
+      }
+      setSuccess("Emergency alert sent. Help is on the way.");
+      setTimeout(() => setView("contact"), 1800);
+    } catch (e) {
+      console.error(e);
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col pt-10 px-5 pb-8">
+      <div className="flex justify-center mb-5">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
+          <AlertTriangle className="w-10 h-10 text-red-500" />
         </div>
-        <div className="mx-auto mt-5 max-w-md space-y-3">
-          <input
-            className="min-h-[48px] w-full rounded-xl border border-red-300 px-3 py-2"
-            placeholder="Your phone number (required)"
-            value={emergencyPhone}
-            onChange={(e) => setEmergencyPhone(e.target.value)}
-            inputMode="tel"
-          />
+      </div>
+
+      <h2 className="text-[24px] font-bold text-gray-900 text-center mb-2">Report Emergency</h2>
+      <p className="text-center text-gray-500 mb-8 px-4 text-[13px] leading-relaxed">
+        Help the owner and emergency contacts<br />by reporting the situation.
+      </p>
+
+      {step === "form" && (
+        <>
+          <div className="space-y-3 mb-6">
+            <h4 className="text-[13px] font-bold text-gray-900 mb-2">What&apos;s the issue?</h4>
+            <div className="space-y-2">
+              {issues.map((issue) => {
+                const isSelected = selectedIssue === issue.id;
+                return (
+                  <label
+                    key={issue.id}
+                    onClick={() => setSelectedIssue(issue.id)}
+                    className={`flex items-center justify-between p-3.5 rounded-[14px] border cursor-pointer transition-all ${
+                      isSelected ? "border-red-400 bg-red-50/50" : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                          isSelected ? "bg-red-100" : "bg-gray-100"
+                        }`}
+                      >
+                        {isSelected ? (
+                          <AlertTriangle className="w-4 h-4 text-red-600" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-gray-500" />
+                        )}
+                      </div>
+                      <span className={`text-[14px] font-bold ${isSelected ? "text-gray-900" : "text-gray-700"}`}>
+                        {issue.label}
+                      </span>
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+                        isSelected ? "border-blue-600 bg-white" : "border-gray-300"
+                      }`}
+                    >
+                      {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="text-[13px] font-bold text-gray-900 mb-1">Your contact number</h4>
+            <p className="text-[11px] text-gray-500 mb-3 font-medium">
+              We&apos;ll send a one-time code to verify it&apos;s really you.
+            </p>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
+              className={fieldClass}
+              placeholder="Enter mobile number"
+            />
+          </div>
+
+          <div className="mb-6">
+            <h4 className="text-[13px] font-bold text-gray-900 mb-1">Share Location</h4>
+            <p className="text-[11px] text-gray-500 mb-3 font-medium">
+              Location access helps notify the owner and nearby help faster.
+            </p>
+            <div className="flex items-center justify-between p-3.5 border border-gray-200 rounded-[14px] bg-white">
+              <span className="text-[13px] font-bold text-gray-800">Use my current location</span>
+              <button
+                type="button"
+                onClick={() => setUseLocation((v) => !v)}
+                className={`w-[42px] h-6 rounded-full p-[2px] transition-colors ${useLocation ? "bg-blue-600" : "bg-gray-300"}`}
+                aria-label="Toggle location"
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${useLocation ? "translate-x-[18px]" : "translate-x-0"}`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700 mb-4">
+              {error}
+            </div>
+          )}
+
           <button
             type="button"
-            className="w-full rounded-xl bg-red-600 py-3.5 text-base font-bold text-white shadow-sm hover:bg-red-700"
-            onClick={sendEmergency}
-            disabled={emergencyBusy}
+            onClick={requestOtp}
+            disabled={busy || cooldown > 0}
+            className="w-full bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white rounded-xl py-4 font-bold shadow-md flex items-center justify-center gap-2 text-[15px] mb-3 transition"
           >
-            {emergencyBusy ? "Sending…" : "Notify emergency contacts"}
+            <Send className="w-4 h-4" />
+            {busy ? "Sending OTP…" : cooldown > 0 ? `Wait ${cooldown}s` : "Send OTP & Continue"}
           </button>
-          {emergencyNote && (
-            <p className="rounded-xl bg-white/60 px-4 py-3 text-center text-sm text-gray-800 dark:bg-black/30 dark:text-gray-100">
-              {emergencyNote}
+
+          <button
+            type="button"
+            onClick={() => setView("contact")}
+            className="w-full text-[13px] font-bold text-gray-500 py-2"
+          >
+            Cancel
+          </button>
+        </>
+      )}
+
+      {step === "verify" && (
+        <>
+          <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
+            <p className="text-[12px] text-gray-700">
+              We sent a code to <span className="font-bold">+91 {contactPhone}</span>.
+              <button
+                type="button"
+                onClick={() => setStep("form")}
+                className="text-blue-700 font-bold ml-1 hover:underline"
+              >
+                Change
+              </button>
             </p>
+          </div>
+
+          <div className="mb-4">
+            <label className={labelClass}>Enter OTP</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              className={fieldClass}
+              placeholder="6-digit OTP"
+              autoFocus
+            />
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={requestOtp}
+                disabled={busy || cooldown > 0}
+                className="text-[12px] font-bold text-[#1E62F1] disabled:text-gray-400"
+              >
+                {cooldown > 0 ? `Resend OTP (${String(cooldown).padStart(2, "0")}s)` : "Resend OTP"}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700 mb-4">
+              {error}
+            </div>
           )}
-        </div>
+          {success && (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-700 mb-4">
+              {success}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={verifyAndSend}
+            disabled={busy}
+            className="w-full bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white rounded-xl py-4 font-bold shadow-md flex items-center justify-center gap-2 text-[15px] mb-3 transition"
+          >
+            <Send className="w-4 h-4" />
+            {busy ? "Sending alert…" : "Verify & Send Alert"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setView("contact")}
+            className="w-full text-[13px] font-bold text-gray-500 py-2"
+          >
+            Cancel
+          </button>
+        </>
+      )}
+
+      <div className="mt-6 flex items-center justify-center gap-3 border border-blue-100 bg-[#F4F7FF] p-4 rounded-xl">
+        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
+        <p className="text-[12px] font-medium text-gray-700 leading-relaxed">
+          Alert will be sent to the owner and<br />their emergency contacts immediately.
+        </p>
       </div>
     </div>
   );

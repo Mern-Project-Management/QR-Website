@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   Clock,
+  Trash2,
 } from "react-feather";
 import { QrCode, Car, Scan } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -90,15 +91,6 @@ interface DndResponse {
   message?: string;
 }
 
-interface ContactResponse {
-  success: boolean;
-  data: {
-    id: number;
-    uniqueId: string;
-    ownerProfile: OwnerProfile;
-  };
-}
-
 // Helper functions
 const formatDate = (iso?: string | null) => {
   if (!iso) return "N/A";
@@ -157,6 +149,54 @@ const resolveScanUrl = (scanUrl: string): string => {
   }
 };
 
+// Backend may return emergencyContacts as a JSON-encoded string or as an array.
+// Normalize to an EmergencyContact[] so the UI can treat it uniformly.
+const normalizeEmergencyContacts = (raw: unknown): EmergencyContact[] => {
+  if (!raw) return [];
+
+  let value: unknown = raw;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((entry) => {
+      if (entry && typeof entry === "object") {
+        const obj = entry as { name?: unknown; phone?: unknown };
+        return {
+          name: typeof obj.name === "string" ? obj.name : "",
+          phone: typeof obj.phone === "string" ? obj.phone : String(obj.phone ?? ""),
+        };
+      }
+      if (typeof entry === "string") {
+        return { name: "", phone: entry };
+      }
+      return { name: "", phone: "" };
+    })
+    .filter((c) => c.phone || c.name);
+};
+
+const normalizeOwnerProfile = (profile: OwnerProfile | null | undefined): OwnerProfile => {
+  const base = (profile ?? {}) as OwnerProfile;
+  return {
+    ...base,
+    emergencyContacts: normalizeEmergencyContacts(base.emergencyContacts as unknown),
+  };
+};
+
+const normalizeQrCode = (qr: QRCodeData): QRCodeData => ({
+  ...qr,
+  ownerProfile: normalizeOwnerProfile(qr.ownerProfile),
+});
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -171,10 +211,16 @@ export default function DashboardPage() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isEditContactModalOpen, setIsEditContactModalOpen] = useState(false);
   const [isDndModalOpen, setIsDndModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Edit contact form state
   const [editForm, setEditForm] = useState<OwnerProfile | null>(null);
   const [savingContact, setSavingContact] = useState(false);
+  const [editError, setEditError] = useState<string>("");
+
+  // Delete state
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>("");
 
   // DND state
   const [dndEnabled, setDndEnabled] = useState(false);
@@ -219,7 +265,7 @@ export default function DashboardPage() {
           throw new Error("Failed to load QR codes");
         }
 
-        if (!cancelled) setQrCodes(json.data || []);
+        if (!cancelled) setQrCodes((json.data || []).map(normalizeQrCode));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Something went wrong");
       } finally {
@@ -255,8 +301,9 @@ export default function DashboardPage() {
     setSelectedQR(qr);
     setEditForm({
       ...qr.ownerProfile,
-      emergencyContacts: Array.isArray(qr.ownerProfile.emergencyContacts) ? qr.ownerProfile.emergencyContacts : [],
+      emergencyContacts: normalizeEmergencyContacts(qr.ownerProfile?.emergencyContacts as unknown),
     });
+    setEditError("");
     setIsEditContactModalOpen(true);
   };
 
@@ -274,6 +321,12 @@ export default function DashboardPage() {
     setIsDndModalOpen(true);
   };
 
+  const openDeleteModal = (qr: QRCodeData) => {
+    setSelectedQR(qr);
+    setDeleteError("");
+    setIsDeleteModalOpen(true);
+  };
+
   const handleSaveContact = async () => {
     if (!selectedQR || !editForm) return;
 
@@ -281,8 +334,9 @@ export default function DashboardPage() {
     if (!accessToken) return;
 
     setSavingContact(true);
+    setEditError("");
     try {
-      const res = await fetch(`/api/backend/qr/${selectedQR.id}/contact`, {
+      const res = await fetch(`/api/backend/my-qrs/${selectedQR.uniqueId}/activation`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -291,25 +345,58 @@ export default function DashboardPage() {
         body: JSON.stringify(editForm),
       });
 
-      const json = (await res.json()) as ContactResponse;
+      const json = (await res.json()) as { success: boolean; message?: string; data?: { ownerProfile?: OwnerProfile } };
 
-      if (res.ok && json.success) {
-        // Update local state
-        setQrCodes((prev) =>
-          prev.map((qr) =>
-            qr.id === selectedQR.id ? { ...qr, ownerProfile: json.data.ownerProfile } : qr
-          )
-        );
-        setIsEditContactModalOpen(false);
-        setIsContactModalOpen(false);
-        openContactModal({ ...selectedQR, ownerProfile: json.data.ownerProfile });
-      } else {
-        throw new Error("Failed to update contact details");
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to update activation details");
       }
+
+      // Prefer fresh server-side profile if returned, else use the form values.
+      const updatedProfile: OwnerProfile = normalizeOwnerProfile(json.data?.ownerProfile ?? editForm);
+
+      setQrCodes((prev) =>
+        prev.map((qr) =>
+          qr.id === selectedQR.id ? { ...qr, ownerProfile: updatedProfile } : qr
+        )
+      );
+      setIsEditContactModalOpen(false);
+      setIsContactModalOpen(false);
+      openContactModal({ ...selectedQR, ownerProfile: updatedProfile });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to save");
+      setEditError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSavingContact(false);
+    }
+  };
+
+  const handleDeleteActivation = async () => {
+    if (!selectedQR) return;
+
+    const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
+    if (!accessToken) return;
+
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`/api/backend/my-qrs/${selectedQR.uniqueId}/activation`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to delete activation");
+      }
+
+      // QR has returned to "Dispatched" — remove from the activated list.
+      setQrCodes((prev) => prev.filter((qr) => qr.id !== selectedQR.id));
+      setIsDeleteModalOpen(false);
+      setSelectedQR(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -591,26 +678,45 @@ export default function DashboardPage() {
 
                 {/* Card Actions */}
                 <div className="px-6 py-4.5 border-t border-gray-100 bg-gray-50/40">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2.5">
                     <button
                       type="button"
                       onClick={() => openContactModal(qr)}
-                      className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      style={{ cursor: "pointer" }}
                     >
-                      <Eye size={14} /> View Contact details
+                      <Eye size={14} /> View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditContactModal(qr)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Edit2 size={14} /> Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => openDndModal(qr)}
-                      className={`inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
+                      className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
                         qr.isDndActive
                           ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-250/30"
                           : "bg-blue-900 hover:bg-blue-800 text-white border border-blue-900"
                       }`}
+                      style={{ cursor: "pointer" }}
                     >
                       {qr.isDndActive ? <Sun size={14} /> : <Moon size={14} />}
                       {qr.isDndActive ? "Disable DND" : "Setup DND"}
+                      
                     </button>
+                    {/* <button
+                      type="button"
+                      onClick={() => openDeleteModal(qr)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      title="Remove activation"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button> */}
                   </div>
                 </div>
               </div>
@@ -637,9 +743,13 @@ export default function DashboardPage() {
           qr={selectedQR}
           form={editForm}
           setForm={setEditForm}
-          onClose={() => setIsEditContactModalOpen(false)}
+          onClose={() => {
+            setIsEditContactModalOpen(false);
+            setEditError("");
+          }}
           onSave={handleSaveContact}
           saving={savingContact}
+          error={editError}
           addEmergencyContact={addEmergencyContact}
           removeEmergencyContact={removeEmergencyContact}
           updateEmergencyContact={updateEmergencyContact}
@@ -657,6 +767,20 @@ export default function DashboardPage() {
           onClose={() => setIsDndModalOpen(false)}
           onSave={handleToggleDnd}
           toggling={togglingDnd}
+        />
+      )}
+
+      {/* Delete Activation Modal */}
+      {mounted && selectedQR && isDeleteModalOpen && (
+        <DeleteActivationModal
+          qr={selectedQR}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteError("");
+          }}
+          onConfirm={handleDeleteActivation}
+          deleting={deleting}
+          error={deleteError}
         />
       )}
     </>
@@ -899,6 +1023,7 @@ function EditContactModal({
   onClose,
   onSave,
   saving,
+  error,
   addEmergencyContact,
   removeEmergencyContact,
   updateEmergencyContact,
@@ -909,6 +1034,7 @@ function EditContactModal({
   onClose: () => void;
   onSave: () => void;
   saving: boolean;
+  error?: string;
   addEmergencyContact: () => void;
   removeEmergencyContact: (index: number) => void;
   updateEmergencyContact: (index: number, field: keyof EmergencyContact, value: string) => void;
@@ -1173,30 +1299,38 @@ function EditContactModal({
           </div>
 
           {/* Footer */}
-          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
-            >
-              {saving ? (
-                <>
-                  <Loader size={16} className="animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={16} /> Save Changes
-                </>
-              )}
-            </button>
+          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            {error && (
+              <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {error}
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader size={16} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1316,6 +1450,99 @@ function DndModal({
               ) : (
                 <>
                   <CheckCircle size={16} /> {enabled ? "Enable DND" : "Disable DND"}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// Delete Activation Modal Component
+function DeleteActivationModal({
+  qr,
+  onClose,
+  onConfirm,
+  deleting,
+  error,
+}: {
+  qr: QRCodeData;
+  onClose: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+  error?: string;
+}) {
+  return createPortal(
+    <div className="fixed inset-0 z-[10060]">
+      <div className="absolute inset-0 bg-black/60" aria-hidden onClick={deleting ? undefined : onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Delete Activation</p>
+                <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={deleting}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              aria-label="Close"
+            >
+              <X size={18} className="text-gray-500" />
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> This will reset the QR to <span className="font-semibold">Dispatched</span>{" "}
+                status. The owner profile and emergency contacts will be removed, and the QR sticker will need to be
+                registered again before it can be used.
+              </p>
+            </div>
+            <p className="text-sm text-gray-700">
+              Are you sure you want to delete the activation for{" "}
+              <span className="font-bold text-gray-900">{qr.assetName}</span>{" "}
+              <span className="text-gray-500">(ID: {qr.uniqueId})</span>?
+            </p>
+            {error && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={deleting}
+              className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
+            >
+              {deleting ? (
+                <>
+                  <Loader size={16} className="animate-spin" /> Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} /> Delete Activation
                 </>
               )}
             </button>

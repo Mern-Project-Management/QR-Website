@@ -44,23 +44,30 @@ export default function UserProfile({ variant = 'default' }: UserProfileProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 rounded-xl transition-all duration-200 active:scale-95 ${
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
+                className={`group flex items-center gap-2 rounded-full transition-all duration-200 active:scale-95 ${
                     compact
-                        ? 'p-1 hover:bg-gray-100'
-                        : 'px-2.5 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 shadow-sm'
+                        ? 'p-1 bg-blue-900 hover:bg-blue-800 shadow-md shadow-blue-900/30'
+                        : 'pl-1 pr-3.5 py-1 bg-blue-900 hover:bg-blue-800 shadow-md shadow-blue-900/30 ring-1 ring-blue-950/20'
                 }`}
             >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-700 to-indigo-900 text-white font-extrabold text-xs shadow-sm">
+                <span
+                    className={`flex shrink-0 items-center justify-center rounded-full bg-white text-blue-900 font-extrabold leading-none shadow-inner ${
+                        compact ? 'h-7 w-7 text-[11px]' : 'h-8 w-8 text-xs'
+                    }`}
+                    aria-hidden="true"
+                >
                     {initials}
-                </div>
+                </span>
                 {!compact && (
-                    <span className="hidden md:block text-xs font-bold text-gray-700 max-w-[100px] truncate">
+                    <span className="hidden md:block text-xs font-extrabold text-white max-w-[120px] truncate tracking-wide">
                         {session.user.name || 'User'}
                     </span>
                 )}
                 <ChevronDown
                     size={14}
-                    className={`shrink-0 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-900' : ''} ${compact ? 'hidden sm:block' : ''}`}
+                    className={`shrink-0 text-white/80 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} ${compact ? 'hidden sm:block' : ''}`}
                 />
             </button>
 

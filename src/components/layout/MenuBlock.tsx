@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { usePathname } from 'next/navigation';
-import { ChevronDown, X, ArrowUpRight } from 'react-feather';
+import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown, X, ArrowUpRight, LogOut, ShoppingBag } from 'react-feather';
+import { LayoutDashboard } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import { safeImageSrc } from '@/lib/safeImageSrc';
 
@@ -58,6 +60,18 @@ const MenuBlock: React.FC<MenuBlockProps> = ({ mobileOpen = false, toggleMobileM
     const [openSubMenu, setOpenSubMenu] = useState<Record<string, boolean>>({});
     const [mounted, setMounted] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const { data: session } = useSession();
+    const isLoggedIn = !!session?.user;
+    const userInitials = session?.user?.name
+        ? session.user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+        : 'U';
+
+    const handleSignOut = async () => {
+        toggleMobileMenu?.();
+        await signOut({ redirect: false });
+        router.push('/');
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -282,14 +296,66 @@ const MenuBlock: React.FC<MenuBlockProps> = ({ mobileOpen = false, toggleMobileM
                                     </li>
                                 ))}
                             </ul>
-                            <div className="mt-auto p-4">
-                                <Link
-                                    href="/register"
-                                    className={`flex items-center justify-center gap-3 rounded-md px-6 py-3 text-sm font-medium transition-all duration-200 hover:opacity-90 ${btnColor} ${btnlinkColor}`}
-                                    onClick={() => toggleMobileMenu?.()}
-                                >
-                                    Register
-                                </Link>
+                            <div className="mt-auto border-t border-gray-100 p-4">
+                                {isLoggedIn ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-900 text-white font-extrabold text-sm">
+                                                {userInitials}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-extrabold text-gray-900 leading-tight">
+                                                    {session?.user?.name || 'User'}
+                                                </p>
+                                                {session?.user?.email && (
+                                                    <p className="truncate text-xs text-gray-500 mt-0.5">
+                                                        {session.user.email}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Link
+                                                href="/dashboard"
+                                                onClick={() => toggleMobileMenu?.()}
+                                                className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-800 hover:bg-gray-50 transition"
+                                            >
+                                                <LayoutDashboard size={14} /> Dashboard
+                                            </Link>
+                                            <Link
+                                                href="/orders"
+                                                onClick={() => toggleMobileMenu?.()}
+                                                className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-800 hover:bg-gray-50 transition"
+                                            >
+                                                <ShoppingBag size={14} /> Orders
+                                            </Link>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleSignOut}
+                                            className="flex w-full items-center justify-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition"
+                                        >
+                                            <LogOut size={14} /> Sign out
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Link
+                                            href="/register"
+                                            className={`flex items-center justify-center gap-3 rounded-md px-6 py-3 text-sm font-medium transition-all duration-200 hover:opacity-90 ${btnColor} ${btnlinkColor}`}
+                                            onClick={() => toggleMobileMenu?.()}
+                                        >
+                                            Register
+                                        </Link>
+                                        <Link
+                                            href="/login"
+                                            className="flex items-center justify-center gap-3 rounded-md border border-gray-200 bg-white px-6 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 transition"
+                                            onClick={() => toggleMobileMenu?.()}
+                                        >
+                                            Login
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </>,
