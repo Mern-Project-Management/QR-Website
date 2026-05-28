@@ -76,9 +76,11 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   const isStaff = useMemo(() => {
     const rawRole = (session?.user as { role?: string | { name?: string } })?.role;
     let roleName = "";
-    if (typeof rawRole === "string") roleName = rawRole;
-    else if (rawRole && typeof rawRole === "object" && "name" in rawRole && typeof (rawRole as any).name === "string") {
-      roleName = (rawRole as any).name ?? "";
+    if (typeof rawRole === "string") {
+      roleName = rawRole;
+    } else if (rawRole && typeof rawRole === "object" && "name" in rawRole) {
+      const candidate = (rawRole as { name?: unknown }).name;
+      if (typeof candidate === "string") roleName = candidate;
     }
     return roleName === "admin" || roleName === "editor";
   }, [session]);
@@ -196,10 +198,10 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     <div className="mx-auto max-w-md bg-white min-h-screen">
       {isNotActive && <BlockedSection />}
       {data.phase === "activate" && (
-        <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} router={router} />
+        <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} />
       )}
       {data.phase === "contact" && (
-        <ContactSection uniqueId={uniqueId} data={data} onDone={reload} adminOrigin={ADMIN_ORIGIN} />
+        <ContactSection uniqueId={uniqueId} data={data} />
       )}
       {!isNotActive && <Footer />}
     </div>
@@ -214,7 +216,7 @@ function BlockedSection() {
       </div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">This QR Code is<br />Not Active</h2>
       <p className="text-center text-gray-500 mb-8 px-4 text-sm leading-relaxed">
-        This QR hasn't been linked to an owner yet or is temporarily disabled.
+        This QR hasn&apos;t been linked to an owner yet or is temporarily disabled.
       </p>
       <div className="w-full space-y-3">
         <button className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2">
@@ -250,7 +252,15 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   );
 }
 
-function ActivateSection({ uniqueId, category, prefill }: any) {
+type ContactView = "contact" | "verify" | "emergency";
+
+interface ActivateSectionProps {
+  uniqueId: string;
+  category: string;
+  prefill: LandingData["prefill"];
+}
+
+function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) {
   const isVehicle = isVehicleQrCategory(category);
   const isPet = isPetQrCategory(category);
 
@@ -629,16 +639,22 @@ function ActivateSection({ uniqueId, category, prefill }: any) {
   );
 }
 
-function ContactSection({ uniqueId, data }: any) {
-  const [view, setView] = useState<"contact" | "verify" | "emergency">("contact");
+interface ContactSectionProps {
+  uniqueId: string;
+  data: LandingData;
+}
+
+const REASONS = ["Wrong Parking", "Lights On", "Door Open", "Tow Alert", "Accident", "Other"] as const;
+
+function ContactSection({ uniqueId, data }: ContactSectionProps) {
+  const [view, setView] = useState<ContactView>("contact");
+  const [selectedReason, setSelectedReason] = useState<(typeof REASONS)[number]>("Wrong Parking");
+
   const defaultQrImageSrc = "/images/default-qr.png";
   const bgImg = data?.defaultImagePath ? resolveBackendImageSrc(data.defaultImagePath, defaultQrImageSrc) : defaultQrImageSrc;
 
   if (view === "verify") return <VerifyNumberView setView={setView} />;
   if (view === "emergency") return <ReportEmergencyView setView={setView} uniqueId={uniqueId} />;
-
-  const reasons = ["Wrong Parking", "Lights On", "Door Open", "Tow Alert", "Accident", "Other"];
-  const [selectedReason, setSelectedReason] = useState("Wrong Parking");
 
   return (
     <div className="flex flex-col px-4 pt-4 space-y-5">
@@ -665,7 +681,7 @@ function ContactSection({ uniqueId, data }: any) {
           <span className="text-[13px] font-bold text-gray-900">Owner Message</span>
         </div>
         <div className="bg-[#F4F7FF] text-gray-800 text-[13px] font-medium p-4 rounded-2xl rounded-tl-sm shadow-sm leading-relaxed">
-          Thanks for caring! Please let me know if there's an issue with my vehicle. 🙏
+          Thanks for caring! Please let me know if there&apos;s an issue with my vehicle. 🙏
         </div>
       </div>
 
@@ -673,7 +689,7 @@ function ContactSection({ uniqueId, data }: any) {
       <div className="space-y-2.5">
         <h4 className="text-[13px] font-bold text-gray-900 px-1">Why are you contacting the owner?</h4>
         <div className="flex flex-wrap gap-2">
-          {reasons.map(r => (
+          {REASONS.map(r => (
             <button
               key={r}
               onClick={() => setSelectedReason(r)}
@@ -721,7 +737,11 @@ function ContactSection({ uniqueId, data }: any) {
   );
 }
 
-function VerifyNumberView({ setView }: any) {
+interface VerifyNumberViewProps {
+  setView: React.Dispatch<React.SetStateAction<ContactView>>;
+}
+
+function VerifyNumberView({ setView }: VerifyNumberViewProps) {
   return (
     <div className="flex flex-col pt-12 px-5">
       <div className="flex justify-center mb-6">
@@ -760,9 +780,16 @@ function VerifyNumberView({ setView }: any) {
           </div>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 space-y-3">
           <button type="button" className="w-full bg-[#1E62F1] text-white rounded-xl py-4 font-bold shadow-md text-[15px]">
             Verify & Continue
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("contact")}
+            className="w-full text-[13px] font-bold text-gray-500 py-2"
+          >
+            Cancel
           </button>
         </div>
       </form>
@@ -777,7 +804,12 @@ function VerifyNumberView({ setView }: any) {
   );
 }
 
-function ReportEmergencyView({ setView, uniqueId }: any) {
+interface ReportEmergencyViewProps {
+  setView: React.Dispatch<React.SetStateAction<ContactView>>;
+  uniqueId: string;
+}
+
+function ReportEmergencyView({ setView, uniqueId }: ReportEmergencyViewProps) {
   const issues = [
     { id: "accident", label: "Accident" },
     { id: "damage", label: "Vehicle Damage" },

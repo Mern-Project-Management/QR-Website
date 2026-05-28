@@ -321,6 +321,7 @@ export default function DashboardPage() {
     setIsDndModalOpen(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openDeleteModal = (qr: QRCodeData) => {
     setSelectedQR(qr);
     setDeleteError("");
