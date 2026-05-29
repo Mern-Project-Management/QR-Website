@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import PageTitle3 from "@/components/ui/PageTitle3";
+import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 
 interface MarketplaceItem {
     id: string;
@@ -10,6 +12,66 @@ interface MarketplaceItem {
     redirectUrl: string;
     isActive: boolean;
     sortOrder: number;
+}
+
+function isInlineSvgIcon(icon: string): boolean {
+    const trimmed = icon.trim();
+    return trimmed.startsWith("<svg") || trimmed.startsWith("<?xml");
+}
+
+/** Backend may send `/api/image/download/...`, `/uploads/...`, or a full URL. */
+function isRemoteImageIcon(icon: string): boolean {
+    const trimmed = icon.trim();
+    if (!trimmed || isInlineSvgIcon(trimmed)) return false;
+    return (
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("/api/") ||
+        trimmed.startsWith("/uploads/") ||
+        /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(trimmed)
+    );
+}
+
+function MarketplaceIcon({ icon, title }: { icon: string; title: string }) {
+    const trimmed = icon.trim();
+
+    if (isInlineSvgIcon(trimmed)) {
+        return (
+            <div
+                className="w-8 h-8 flex items-center justify-center fill-current [&>svg]:w-full [&>svg]:h-full"
+                dangerouslySetInnerHTML={{ __html: trimmed }}
+            />
+        );
+    }
+
+    if (isRemoteImageIcon(trimmed)) {
+        const src = resolveBackendImageSrc(trimmed, "/images/fallback-image.png");
+        if (typeof src === "string") {
+            return (
+                <Image
+                    src={src}
+                    alt={title}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 object-contain"
+                    unoptimized={src.includes("/api/image/download")}
+                />
+            );
+        }
+    }
+
+    const initials = title
+        .split(/\s+/)
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+    return (
+        <span className="text-sm font-bold uppercase text-blue-700 dark:text-blue-300">
+            {initials || "?"}
+        </span>
+    );
 }
 
 const MarketplaceSection = () => {
@@ -98,7 +160,6 @@ const MarketplaceSection = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {displayCards.map((card, index) => {
-                        const isSvg = card.icon.trim().startsWith("<svg");
                         return (
                             <a
                                 key={card.id}
@@ -133,16 +194,7 @@ const MarketplaceSection = () => {
                                         dark:group-hover:bg-blue-900/40 dark:group-hover:text-blue-300
                                         transition-all duration-300 group-hover:scale-110
                                     ">
-                                        {isSvg ? (
-                                            <div 
-                                                className="w-8 h-8 flex items-center justify-center fill-current [&>svg]:w-full [&>svg]:h-full" 
-                                                dangerouslySetInnerHTML={{ __html: card.icon }} 
-                                            />
-                                        ) : (
-                                            <span className="text-xl font-bold uppercase truncate max-w-full px-2">
-                                                {card.icon.substring(0, 3)}
-                                            </span>
-                                        )}
+                                        <MarketplaceIcon icon={card.icon} title={card.title} />
                                     </div>
 
                                     {/* Title */}

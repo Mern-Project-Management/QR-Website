@@ -212,11 +212,11 @@ export default function HeroOne() {
               />
 
               {/* Floating Icon */}
-              <div className="absolute top-16 left-0 -translate-x-1/2 hidden lg:flex">
+              {/* <div className="absolute top-16 left-0 -translate-x-1/2 hidden lg:flex">
                 <div className="w-16 h-16 rounded-xl bg-lime-300 flex items-center justify-center text-center">
                   <Boxes size={34} strokeWidth="1.5" />
                 </div>
-              </div>
+              </div> */}
 
               {/* Avatar Group */}
               <div className="absolute top-4 -right-8 bg-white rounded-xl border border-gray-200 shadow-sm p-3 gap-4 mt-4 hidden lg:flex flex-row items-center aos-init aos-animate" data-aos="fade-up" data-aos-duration="400" data-delay="400">
