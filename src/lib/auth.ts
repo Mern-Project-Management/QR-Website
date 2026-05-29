@@ -51,8 +51,6 @@ type BackendAuthResponse = {
 };
 
 function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== "production") return undefined;
-  
   if (process.env.COOKIE_DOMAIN) {
     return process.env.COOKIE_DOMAIN;
   }
@@ -74,19 +72,25 @@ function getCookieDomain(): string | undefined {
     }
   }
   
+  if (process.env.NODE_ENV !== "production") {
+    return undefined;
+  }
+  
   return ".odokho.com";
 }
 
+const useSecure = process.env.NODE_ENV === "production" || !!process.env.NEXTAUTH_URL?.startsWith("https://");
+
 export const authOptions: NextAuthOptions = {
-  useSecureCookies: process.env.NODE_ENV === "production",
+  useSecureCookies: useSecure,
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === "production" ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
+      name: useSecure ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: useSecure,
         domain: getCookieDomain(),
       },
     },
