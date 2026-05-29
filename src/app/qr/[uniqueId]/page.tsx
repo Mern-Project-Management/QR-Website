@@ -151,7 +151,8 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     if (!data) return;
 
     if (data.phase === "dispatch" && isStaff) {
-      window.location.href = `https://admin.odokho.com/qr-dispatch/?qr=${uniqueId}`;
+      const targetOrigin = process.env.NODE_ENV === "production" ? "https://admin.odokho.com" : "http://localhost:3060";
+      window.location.href = `${targetOrigin}/qr-dispatch/?qr=${uniqueId}`;
       return;
     }
 

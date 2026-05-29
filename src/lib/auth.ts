@@ -50,7 +50,47 @@ type BackendAuthResponse = {
   };
 };
 
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== "production") return undefined;
+  
+  if (process.env.COOKIE_DOMAIN) {
+    return process.env.COOKIE_DOMAIN;
+  }
+  
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  if (nextAuthUrl) {
+    try {
+      const url = new URL(nextAuthUrl);
+      const host = url.hostname;
+      if (host === "localhost" || host === "127.0.0.1" || /^[0-9.]+$/.test(host)) {
+        return undefined;
+      }
+      const parts = host.split(".");
+      if (parts.length >= 2) {
+        return `.${parts.slice(-2).join(".")}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  
+  return ".odokho.com";
+}
+
 export const authOptions: NextAuthOptions = {
+  useSecureCookies: process.env.NODE_ENV === "production",
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        domain: getCookieDomain(),
+      },
+    },
+  },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
