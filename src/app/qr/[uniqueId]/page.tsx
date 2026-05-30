@@ -30,6 +30,7 @@ interface LandingData {
   expiredContactEmail?: string | null;
   expiredContactPhone?: string | null;
   expiredMessage?: string | null;
+  viewerIsStaff?: boolean;
 }
 
 const Footer = () => (
@@ -58,6 +59,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [data, setData] = useState<LandingData | null>(null);
+  const [adminStaff, setAdminStaff] = useState(false);
   const ADMIN_ORIGIN = getAdminOrigin();
 
   const [deviceId] = useState(() => {
@@ -74,8 +76,28 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     }
   });
 
-  const isStaff = useMemo(() => isStaffSession(session), [session]);
-  console.log("isStaff", isStaff);
+  const isStaffFromWebsiteSession = useMemo(() => isStaffSession(session), [session]);
+  const isStaff = adminStaff || !!data?.viewerIsStaff || isStaffFromWebsiteSession;
+
+  // Admin panel (admin.odokho.com) uses a separate NextAuth app. Decode its
+  // session cookie via /api/staff-session using ADMIN_NEXTAUTH_SECRET.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/staff-session", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as { isStaff?: boolean };
+        if (!cancelled) setAdminStaff(!!json.isStaff);
+      } catch {
+        // ignore — fall back to API payload / website session
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const reload = async () => {
     setLoading(true);
@@ -142,10 +164,10 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   useEffect(() => {
     if (!data) return;
 
-    // if (data.phase === "dispatch" && isStaff) {
-    //   window.location.href = `${ADMIN_ORIGIN}/qr-dispatch/?qr=${uniqueId}`;
-    //   return;
-    // }
+    if (data.phase === "dispatch" && isStaff) {
+      window.location.href = `${ADMIN_ORIGIN}/qr-dispatch/?qr=${uniqueId}`;
+      return;
+    }
 
     if (data.status === "Expired") {
       router.replace(`/qr/${uniqueId}/expired`);

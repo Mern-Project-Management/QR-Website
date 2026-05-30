@@ -10,6 +10,9 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     const url = `${ADMIN_ORIGIN}/api/${path.join("/")}${req.nextUrl.search}`;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const cookie = req.headers.get("cookie");
+    if (cookie) headers.cookie = cookie;
+
     // Attach public token only for Google Reviews API calls
     if (path[0] === "google-reviews" && GOOGLE_REVIEWS_PUBLIC_TOKEN) {
         headers["x-public-token"] = GOOGLE_REVIEWS_PUBLIC_TOKEN;

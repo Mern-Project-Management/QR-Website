@@ -85,7 +85,6 @@ type SessionLike = {
 /** Resolve staff status from NextAuth session (session role + JWT fallback). */
 export function isStaffSession(session: SessionLike): boolean {
   const sessionRole = normalizeRoleValue(session?.user?.role);
-  console.log("sessionRole", sessionRole);
   if (isStaffRole(sessionRole)) return true;
 
   const jwtRole = roleFromAccessToken(session?.accessToken);
