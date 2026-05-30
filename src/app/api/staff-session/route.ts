@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { isStaffRole, normalizeRoleValue } from "@/lib/resolveUserRole";
-import { adminSessionCookieName, useSecureAuthCookies } from "@/lib/session-cookies";
+import { adminSessionCookieName } from "@/lib/session-cookies";
 
 /**
  * Fallback staff detection when admin cookie is sent to the website host

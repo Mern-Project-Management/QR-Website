@@ -1,5 +1,5 @@
 /** Production uses secure cookie names when NEXTAUTH_URL is https. */
-export function useSecureAuthCookies(): boolean {
+export function isSecureAuthCookieEnv(): boolean {
   return (
     process.env.NODE_ENV === "production" ||
     !!process.env.NEXTAUTH_URL?.startsWith("https://")
@@ -10,7 +10,7 @@ export function useSecureAuthCookies(): boolean {
 export function websiteSessionCookieName(): string {
   const custom = process.env.WEBSITE_SESSION_COOKIE_NAME?.trim();
   if (custom) return custom;
-  return useSecureAuthCookies()
+  return isSecureAuthCookieEnv()
     ? "__Secure-odokho-website.session-token"
     : "odokho-website.session-token";
 }
@@ -19,7 +19,7 @@ export function websiteSessionCookieName(): string {
 export function adminSessionCookieName(): string {
   const custom = process.env.ADMIN_SESSION_COOKIE_NAME?.trim();
   if (custom) return custom;
-  return useSecureAuthCookies()
+  return isSecureAuthCookieEnv()
     ? "__Secure-odokho-admin.session-token"
     : "odokho-admin.session-token";
 }

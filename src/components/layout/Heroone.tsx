@@ -7,7 +7,6 @@ import { Skeleton } from "../ui/Skeleton";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import img from "../../../public/images/right-banner-bg.webp";
 import shap from "../../../public/images/shap1.webp";
-import { Boxes } from "lucide-react";
 
 interface HeroContent {
   id?: string;

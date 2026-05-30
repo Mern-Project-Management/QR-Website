@@ -4,7 +4,7 @@ import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveRoleForAuth, roleFromAccessToken } from "@/lib/resolveUserRole";
 import {
   getAuthCookieDomain,
-  useSecureAuthCookies,
+  isSecureAuthCookieEnv,
   websiteSessionCookieName,
 } from "@/lib/session-cookies";
 
@@ -58,7 +58,7 @@ type BackendAuthResponse = {
   };
 };
 
-const useSecure = useSecureAuthCookies();
+const useSecure = isSecureAuthCookieEnv();
 
 export const authOptions: NextAuthOptions = {
   useSecureCookies: useSecure,
