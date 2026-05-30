@@ -1,6 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getAdminOrigin } from "@/lib/adminOrigin";
+import { resolveRoleForAuth, roleFromAccessToken } from "@/lib/resolveUserRole";
 
 const ADMIN_ORIGIN = getAdminOrigin();
 
@@ -32,7 +33,9 @@ type BackendAuthUser = {
   id?: string | number;
   name?: string;
   email?: string;
-  role?: string;
+  role?: unknown;
+  roleName?: unknown;
+  userRole?: unknown;
 };
 
 type BackendAuthResponse = {
@@ -150,7 +153,10 @@ export const authOptions: NextAuthOptions = {
             id: String(parsedUser?.id ?? parsedUser?.email ?? credentials.email),
             name: parsedUser?.name || "",
             email: parsedUser?.email || credentials.email,
-            role: parsedUser?.role || "customer",
+            role: resolveRoleForAuth(
+              parsedUser?.role ?? parsedUser?.roleName ?? parsedUser?.userRole,
+              typeof accessToken === "string" ? accessToken : null,
+            ),
             accessToken: typeof accessToken === "string" && accessToken.length > 0 ? accessToken : null,
           };
         }
@@ -193,7 +199,7 @@ export const authOptions: NextAuthOptions = {
               id: String(user.id ?? user.email ?? credentials.email),
               name: user.name || "",
               email: user.email || credentials.email,
-              role: user.role || "customer",
+              role: resolveRoleForAuth(user.role ?? user.roleName ?? user.userRole, token || null),
               accessToken: token || null,
             };
           }
@@ -216,8 +222,13 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role || resolveRoleForAuth(undefined, user.accessToken);
         token.accessToken = user.accessToken || null;
+      } else if (!token.role && token.accessToken) {
+        // Backfill role for sessions created before role was stored, or when
+        // the backend only embeds role inside the access token JWT.
+        const fromJwt = roleFromAccessToken(token.accessToken as string);
+        if (fromJwt) token.role = fromJwt;
       }
       return token;
     },

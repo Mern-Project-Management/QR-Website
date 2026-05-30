@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, Phone, MessageCircle, AlertTriangle, BadgeCheck, Headset, Lock, Send, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
+import { isStaffSession } from "@/lib/resolveUserRole";
 import Image from "next/image";
 
 const isPetQrCategory = (cat: string) => /pet|dog|cat/i.test(cat);
@@ -73,18 +74,8 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     }
   });
 
-  const isStaff = useMemo(() => {
-    const rawRole = (session?.user as { role?: string | { name?: string } })?.role;
-    console.log("rawRoleeeeee", rawRole);
-    let roleName = "";
-    if (typeof rawRole === "string") {
-      roleName = rawRole;
-    } else if (rawRole && typeof rawRole === "object" && "name" in rawRole) {
-      const candidate = (rawRole as { name?: unknown }).name;
-      if (typeof candidate === "string") roleName = candidate;
-    }
-    return roleName === "admin" || roleName === "editor";
-  }, [session]);
+  const isStaff = useMemo(() => isStaffSession(session), [session]);
+  console.log("isStaff", isStaff);
 
   const reload = async () => {
     setLoading(true);
@@ -152,8 +143,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     if (!data) return;
 
     // if (data.phase === "dispatch" && isStaff) {
-    //   const targetOrigin = process.env.NODE_ENV === "production" ? "https://admin.odokho.com" : "http://localhost:3060";
-    //   window.location.href = `${targetOrigin}/qr-dispatch/?qr=${uniqueId}`;
+    //   window.location.href = `${ADMIN_ORIGIN}/qr-dispatch/?qr=${uniqueId}`;
     //   return;
     // }
 
@@ -164,7 +154,7 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     if (data.status === "Disabled") {
       router.replace(`/qr/${uniqueId}/disabled`);
     }
-  }, [data, router, uniqueId, isStaff]);
+  }, [data, router, uniqueId, isStaff, ADMIN_ORIGIN]);
 
   if (loading) {
     return (
