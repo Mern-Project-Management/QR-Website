@@ -2,17 +2,41 @@
 
 import { useEffect, useRef, useState } from "react";
 
+interface BannerData {
+    id: number;
+    isActive: boolean;
+    message: string;
+    textColor: string;
+    backgroundColor: string;
+    updatedAt: string;
+}
+
 export default function MaintenanceBanner() {
+    const [bannerData, setBannerData] = useState<BannerData | null>(null);
     const [visible, setVisible] = useState(true);
     const bannerRef = useRef<HTMLDivElement | null>(null);
 
     // Pause animation on hover for readability
     const [paused, setPaused] = useState(false);
 
+    // Fetch banner config from API
+    useEffect(() => {
+        fetch("/api/backend/maintenance-banner")
+            .then((res) => res.json())
+            .then((json) => {
+                if (json?.data) {
+                    setBannerData(json.data);
+                }
+            })
+            .catch(() => {
+                // silently fail — banner simply won't show
+            });
+    }, []);
+
     useEffect(() => {
         const root = document.documentElement;
 
-        if (!visible) {
+        if (!visible || !bannerData?.isActive) {
             root.style.setProperty("--maintenance-banner-offset", "0px");
             return;
         }
@@ -36,14 +60,19 @@ export default function MaintenanceBanner() {
             window.removeEventListener("resize", updateOffset);
             root.style.setProperty("--maintenance-banner-offset", "0px");
         };
-    }, [visible]);
+    }, [visible, bannerData]);
 
-    if (!visible) return null;
+    // Don't render if not fetched yet, not active, or dismissed
+    if (!bannerData || !bannerData.isActive || !visible) return null;
 
     return (
         <div
             ref={bannerRef}
             className="maintenance-banner"
+            style={{
+                backgroundColor: bannerData.backgroundColor,
+                color: bannerData.textColor,
+            }}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
         >
@@ -63,9 +92,8 @@ export default function MaintenanceBanner() {
                 >
                     {Array.from({ length: 8 }).map((_, i) => (
                         <span key={i} className="maintenance-banner__item">
-                            <span className="maintenance-banner__icon">🔧</span>
-                            This site is currently under maintenance — we&apos;ll be back
-                            shortly!
+                            <span className="maintenance-banner__icon">📢</span>
+                            {bannerData.message}
                             <span className="maintenance-banner__dot">•</span>
                         </span>
                     ))}
@@ -81,20 +109,11 @@ export default function MaintenanceBanner() {
           right: 0;
           width: 100%;
           overflow: hidden;
-          background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444, #f97316, #f59e0b);
-          background-size: 200% 100%;
-          animation: bannerGradient 6s linear infinite;
-          color: #fff;
           font-size: 0.85rem;
           font-weight: 600;
           letter-spacing: 0.025em;
           z-index: 99999;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        @keyframes bannerGradient {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
         }
 
         .maintenance-banner__close {
@@ -105,7 +124,7 @@ export default function MaintenanceBanner() {
           z-index: 10;
           background: rgba(0, 0, 0, 0.25);
           border: none;
-          color: #fff;
+          color: inherit;
           width: 1.5rem;
           height: 1.5rem;
           border-radius: 50%;

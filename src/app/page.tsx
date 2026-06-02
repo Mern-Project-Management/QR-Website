@@ -25,14 +25,14 @@ export default function HomePage() {
                 <section id="features">
                     <WhyChooseUs2 />
                 </section>
+                <section id="services">
+                    <WhyChooseUs />
+                </section>
 
                 <section>
                     <CategorySection />
                 </section>
 
-                <section id="services">
-                    <WhyChooseUs />
-                </section>
 
 
                 <section>

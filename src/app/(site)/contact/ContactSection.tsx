@@ -161,6 +161,28 @@ export default function ContactSection({ embedded = false }: { embedded?: boolea
                                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
                                             />
                                         </div>
+                                        <div className="mb-4">
+                                            <label
+                                                htmlFor="inquiryType"
+                                                className="block text-gray-900 text-base font-medium mb-2"
+                                            >
+                                                Inquiry type
+                                            </label>
+                                            <select
+                                                id="inquiryType"
+                                                name="inquiryType"
+                                                required
+                                                defaultValue=""
+                                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
+                                            >
+                                                <option value="" disabled>
+                                                    Select an inquiry type
+                                                </option>
+                                                <option value="general_inquiry">General Inquiry</option>
+                                                <option value="bulk_purchase">Bulk Purchase</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
 
                                         <div className="mb-4">
                                             <label

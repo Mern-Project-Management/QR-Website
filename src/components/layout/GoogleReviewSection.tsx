@@ -158,10 +158,10 @@ export default function GoogleReviewSection() {
                 <Star key={index} size={18} fill="currentColor" />
               ))}
             </div>
-            <span className="font-semibold text-gray-900 dark:text-white">{averageRating}/5</span>
+            {/* <span className="font-semibold text-gray-900 dark:text-white">{averageRating}/5</span>
             <span className="text-gray-500 dark:text-gray-400">
               ({displayReviews.length}+ reviews)
-            </span>
+            </span> */}
           </div>
         </div>
 

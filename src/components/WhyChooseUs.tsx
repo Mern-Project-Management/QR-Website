@@ -178,7 +178,7 @@ export default function WhyChooseUs() {
     return (
       <section
         id="why_choose_us"
-        className="bg-white px-4 py-12 sm:px-6 md:py-16 lg:px-8"
+        className="bg-home-one-gradient-banner px-4 py-12 sm:px-6 md:py-16 lg:px-8"
       >
         <div className="mx-auto w-full max-w-7xl">
           <div className="mb-8 text-center sm:mb-10">
@@ -213,7 +213,7 @@ export default function WhyChooseUs() {
   return (
     <section
       id="why_choose_us"
-      className="bg-white px-4 py-12 text-gray-900 sm:px-6 md:py-16 lg:px-8"
+      className="bg-home-one-gradient-banner px-4 py-12 text-gray-900 sm:px-6 md:py-16 lg:px-8"
     >
       <div className="mx-auto w-full max-w-7xl">
         <div
