@@ -19,15 +19,11 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar,
-  ExternalLink,
-  Copy,
-  Check,
   Clock,
   Trash2,
 } from "react-feather";
 import { QrCode, Car, Scan } from "lucide-react";
 import { createPortal } from "react-dom";
-import { getAdminOrigin } from "@/lib/adminOrigin";
 
 // Types
 interface EmergencyContact {
@@ -127,26 +123,11 @@ const getCategoryColor = (category: string) => {
   }
 };
 
-const ADMIN_ORIGIN = getAdminOrigin();
-
 const getStatusStyles = (status?: string | null, isActive?: boolean) => {
   const s = (status || "").toUpperCase();
   if (!isActive) return "bg-gray-50 text-gray-500 border-gray-200";
   if (s === "ACTIVE") return "bg-green-50 text-green-700 border-green-200";
   return "bg-amber-50 text-amber-700 border-amber-200";
-};
-
-const resolveScanUrl = (scanUrl: string): string => {
-  try {
-    const url = new URL(scanUrl);
-    const adminUrl = new URL(ADMIN_ORIGIN);
-    url.protocol = adminUrl.protocol;
-    url.hostname = adminUrl.hostname;
-    url.port = adminUrl.port;
-    return url.toString();
-  } catch {
-    return scanUrl;
-  }
 };
 
 // Backend may return emergencyContacts as a JSON-encoded string or as an array.
@@ -227,9 +208,6 @@ export default function DashboardPage() {
   const [dndUntil, setDndUntil] = useState("");
   const [togglingDnd, setTogglingDnd] = useState(false);
 
-  // Copy URL state
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
@@ -285,12 +263,6 @@ export default function DashboardPage() {
     const totalScans = qrCodes.reduce((sum, qr) => sum + (qr.scans || 0), 0);
     return { total, active, dndActive, totalScans };
   }, [qrCodes]);
-
-  const handleCopyUrl = (url: string, id: number) => {
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const openContactModal = (qr: QRCodeData) => {
     setSelectedQR(qr);

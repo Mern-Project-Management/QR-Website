@@ -131,12 +131,6 @@ export default function GoogleReviewSection() {
     }));
   }, [reviews]);
 
-  const averageRating = useMemo(() => {
-    if (!displayReviews.length) return "5.0";
-    const total = displayReviews.reduce((sum, item) => sum + item.rating, 0);
-    return (total / displayReviews.length).toFixed(1);
-  }, [displayReviews]);
-
   return (
     <section className="bg-white py-12 dark:bg-gray-900 lg:py-16">
       <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
@@ -158,10 +152,6 @@ export default function GoogleReviewSection() {
                 <Star key={index} size={18} fill="currentColor" />
               ))}
             </div>
-            {/* <span className="font-semibold text-gray-900 dark:text-white">{averageRating}/5</span>
-            <span className="text-gray-500 dark:text-gray-400">
-              ({displayReviews.length}+ reviews)
-            </span> */}
           </div>
         </div>
 

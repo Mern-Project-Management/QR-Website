@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, ShieldCheck, Phone, MessageCircle, AlertTriangle, BadgeCheck, Headset, Lock, Send, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
@@ -414,18 +415,18 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
             We&apos;ve sent a welcome email with the login link. Please check your inbox (and spam folder).
           </p>
           <div className="mt-5 grid grid-cols-1 gap-3">
-            <a
+            <Link
               href="/login"
               className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-extrabold text-white hover:bg-blue-700 transition"
             >
               Go to Login
-            </a>
-            <a
+            </Link>
+            <Link
               href="/"
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-bold text-gray-800 hover:bg-gray-50 transition"
             >
               Back to Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>
