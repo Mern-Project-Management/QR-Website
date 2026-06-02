@@ -120,7 +120,8 @@ function LoginContent() {
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState<null | 'send' | 'verify' | 'resend'>(null);
     const [showOtpInput, setShowOtpInput] = useState(false);
-    const [formData, setFormData] = useState({ email: '', otp: '' });
+    const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
+    const [formData, setFormData] = useState({ identifier: '', otp: '' });
     const [error, setError] = useState<string>('');
     const [info, setInfo] = useState<string>('');
     const [resendIn, setResendIn] = useState<number>(0);
@@ -154,23 +155,45 @@ function LoginContent() {
         return () => clearInterval(t);
     }, [resendIn]);
 
+    const normalizedIdentifier = (() => {
+        const raw = formData.identifier.trim();
+        if (authMode === 'email') return raw.toLowerCase();
+        return raw.replace(/\D/g, '').slice(0, 15);
+    })();
+
+    const validateIdentifier = (): string | null => {
+        if (!normalizedIdentifier) return 'Email or mobile number is required';
+        if (authMode === 'email') {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) return 'Enter a valid email address';
+            return null;
+        }
+        // phone
+        if (!/^\d{8,15}$/.test(normalizedIdentifier)) return 'Enter a valid mobile number (8–15 digits)';
+        return null;
+    };
+
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setInfo('');
+        const msg = validateIdentifier();
+        if (msg) {
+            setError(msg);
+            return;
+        }
         setLoading('send');
         try {
             const res = await fetch(CUSTOMER_LOGIN_REQUEST_OTP, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email }),
+                body: JSON.stringify({ identifier: normalizedIdentifier }),
             });
             const text = await res.text();
             const data = (() => { try { return JSON.parse(text); } catch { return null; } })();
             if (res.ok) {
                 setShowOtpInput(true);
                 setResendIn(60);
-                setInfo((data && data.message) || 'OTP sent successfully. Please check your email.');
+                setInfo((data && data.message) || 'OTP sent successfully.');
             } else {
                 setError((data && data.message) || text || 'Failed to send OTP');
             }
@@ -186,13 +209,18 @@ function LoginContent() {
         e.preventDefault();
         setError('');
         setInfo('');
+        const msg = validateIdentifier();
+        if (msg) {
+            setError(msg);
+            return;
+        }
         setLoading('verify');
         try {
             const otp = formData.otp.replace(/\D/g, '').slice(0, 6);
             const verifyRes = await fetch(CUSTOMER_LOGIN_VERIFY_OTP, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: formData.email, otp }),
+                body: JSON.stringify({ identifier: normalizedIdentifier, otp }),
             });
             const verifyText = await verifyRes.text();
             const verifyData = (() => { try { return JSON.parse(verifyText); } catch { return null; } })() as null | { message?: string; token?: string; accessToken?: string; jwt?: string; user?: unknown; data?: unknown };
@@ -215,7 +243,8 @@ function LoginContent() {
 
             const result = await signIn('credentials', {
                 redirect: false,
-                email: formData.email,
+                // NextAuth credentials provider expects `email` field; we pass email OR phone here.
+                email: normalizedIdentifier,
                 otp,
                 passthrough: "true",
                 accessToken: token || "",
@@ -247,12 +276,17 @@ function LoginContent() {
         if (resendIn > 0) return;
         setError('');
         setInfo('');
+        const msg = validateIdentifier();
+        if (msg) {
+            setError(msg);
+            return;
+        }
         setLoading('resend');
         try {
             const res = await fetch(CUSTOMER_LOGIN_REQUEST_OTP, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email }),
+                body: JSON.stringify({ identifier: normalizedIdentifier }),
             });
             const text = await res.text();
             const data = (() => { try { return JSON.parse(text); } catch { return null; } })();
@@ -394,8 +428,10 @@ function LoginContent() {
                         </h1>
                         <p className="text-gray-500 dark:text-white/40 text-sm">
                             {showOtpInput
-                                ? `Enter the 6-digit code sent to ${formData.email}`
-                                : 'Enter your email address to receive a one-time code'}
+                                ? `Enter the 6-digit code sent to ${normalizedIdentifier || 'you'}`
+                                : authMode === 'email'
+                                  ? 'Enter your email address to receive a one-time code'
+                                  : 'Enter your mobile number to receive a one-time code'}
                         </p>
                     </div>
 
@@ -408,9 +444,40 @@ function LoginContent() {
                     {/* ── EMAIL FORM ── */}
                     {!showOtpInput ? (
                         <form onSubmit={handleSendOtp} className="space-y-4">
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setAuthMode('email'); setError(''); setInfo(''); }}
+                                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest border transition ${
+                                        authMode === 'email'
+                                            ? 'bg-blue-900 text-white border-blue-900'
+                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Email
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setAuthMode('phone'); setError(''); setInfo(''); }}
+                                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest border transition ${
+                                        authMode === 'phone'
+                                            ? 'bg-blue-900 text-white border-blue-900'
+                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Mobile
+                                </button>
+                            </div>
                             {field(
-                                "email", "Email Address", "email", "you@example.com",
-                                formData.email, (v) => setFormData({ ...formData, email: v }), { required: true }
+                                "identifier",
+                                authMode === 'email' ? "Email Address" : "Mobile Number",
+                                authMode === 'email' ? "email" : "tel",
+                                authMode === 'email' ? "you@example.com" : "Enter mobile number",
+                                formData.identifier,
+                                (v) => setFormData({ ...formData, identifier: authMode === 'phone' ? v.replace(/\\D/g, '').slice(0, 15) : v }),
+                                authMode === 'phone'
+                                    ? { required: true, inputMode: 'numeric', autoComplete: 'tel' }
+                                    : { required: true, autoComplete: 'email' }
                             )}
 
                             <button
@@ -434,7 +501,9 @@ function LoginContent() {
                                     </svg>
                                 </div>
                                 <p className="text-blue-900 dark:text-blue-300 text-sm leading-relaxed">
-                                    Check your inbox at <strong className="text-blue-700 dark:text-blue-200">{formData.email}</strong> for your one-time code.
+                                    Check {authMode === 'email' ? 'your inbox' : 'your phone'} at{' '}
+                                    <strong className="text-blue-700 dark:text-blue-200">{normalizedIdentifier}</strong>{' '}
+                                    for your one-time code.
                                     <br />
                                     <span className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1 block">
                                         Your code expires in 10 minutes.

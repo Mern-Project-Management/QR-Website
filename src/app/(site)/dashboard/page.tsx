@@ -631,7 +631,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* QR URL */}
-                  <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80 mb-4">
+                  {/* <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80 mb-4">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Secure Link</p>
                     <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-gray-250/60 shadow-inner">
                       <input
@@ -660,7 +660,7 @@ export default function DashboardPage() {
                         </a>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Created/Updated */}
                   <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium">

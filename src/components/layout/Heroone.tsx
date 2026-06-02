@@ -218,7 +218,7 @@ export default function HeroOne() {
               </div> */}
 
               {/* Avatar Group */}
-              <div className="absolute top-4 -right-8 bg-white rounded-xl border border-gray-200 shadow-sm p-3 gap-4 mt-4 hidden lg:flex flex-row items-center aos-init aos-animate" data-aos="fade-up" data-aos-duration="400" data-delay="400">
+              {/* <div className="absolute top-4 -right-8 bg-white rounded-xl border border-gray-200 shadow-sm p-3 gap-4 mt-4 hidden lg:flex flex-row items-center aos-init aos-animate" data-aos="fade-up" data-aos-duration="400" data-delay="400">
                 <div className="flex -space-x-4">
                   <Image
                     src={resolveImageUrl(content.avatar1_url, "")}
@@ -251,7 +251,7 @@ export default function HeroOne() {
                     {content.stats_subtext || fallbackContent.stats_subtext}
                   </span>
                 </div>
-              </div>
+              </div> */}
 
               {/* topslider */}
               <TopCarousel

@@ -298,6 +298,8 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
+  const [activated, setActivated] = useState(false);
+  const didSuccessAlertRef = React.useRef(false);
 
   // personal
   const [fullName, setFullName] = useState<string>(prefill?.name || "");
@@ -386,7 +388,12 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
         setError(json.message || "Activation failed");
         return;
       }
-      window.location.href = "/dashboard";
+      setActivated(true);
+      if (!didSuccessAlertRef.current) {
+        didSuccessAlertRef.current = true;
+        // User requested an explicit alert on successful activation.
+        window.alert("QR activated successfully. A welcome email has been sent — please check your inbox.");
+      }
     } catch (err) {
       console.error(err);
       setError("Something went wrong. Please try again.");
@@ -394,6 +401,36 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
       setSaving(false);
     }
   };
+
+  if (activated) {
+    return (
+      <div className="flex flex-col px-5 pt-12 pb-10">
+        <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-600 text-white">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <h2 className="text-xl font-extrabold text-gray-900">QR Activated Successfully</h2>
+          <p className="mt-2 text-sm font-medium text-gray-600">
+            We&apos;ve sent a welcome email with the login link. Please check your inbox (and spam folder).
+          </p>
+          <div className="mt-5 grid grid-cols-1 gap-3">
+            <a
+              href="/login"
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-extrabold text-white hover:bg-blue-700 transition"
+            >
+              Go to Login
+            </a>
+            <a
+              href="/"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-bold text-gray-800 hover:bg-gray-50 transition"
+            >
+              Back to Home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col px-5 pt-8 pb-6">
