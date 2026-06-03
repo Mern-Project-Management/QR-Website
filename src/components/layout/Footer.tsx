@@ -212,7 +212,7 @@ export default function Footer({ logo = "/images/logo/combined-logo-white.png" }
                 {/* Bottom Section */}
                 <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-center items-center gap-4 text-gray-400 font-medium text-sm">
                     <p className="mb-0">
-                        Copyright © {new Date().getFullYear()} RnD Technosoft. All rights reserved.
+                        Copyright © {new Date().getFullYear()} Odokho Digital Service. All rights reserved.
                     </p>
                 </div>
             </div>

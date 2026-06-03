@@ -101,7 +101,7 @@ export default function HeroOne() {
 
   if (loading) {
     return (
-      <div className="banner-wrap relative overflow-x-hidden bg-home-one-gradient-banner pb-10 pt-28 font-dm lg:pb-16 lg:pt-20">
+      <div className="banner-wrap relative overflow-x-clip overflow-y-visible bg-home-one-gradient-banner pb-10 pt-[calc(7rem+var(--maintenance-banner-offset,0px))] font-dm sm:pt-[calc(7.5rem+var(--maintenance-banner-offset,0px))] lg:pb-16 lg:pt-[calc(5.5rem+var(--maintenance-banner-offset,0px))]">
         <div className="mx-auto max-w-screen-xl min-w-0 px-3 pb-0 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
           <div className="grid min-h-[20rem] grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-10">
             <div className="flex flex-col justify-center gap-4 pt-2">
@@ -127,7 +127,7 @@ export default function HeroOne() {
   }
 
   return (
-    <div className="banner-wrap relative overflow-x-hidden bg-home-one-gradient-banner pb-8 pt-24 font-dm sm:pb-10 sm:pt-28 lg:pb-16 lg:pt-20">
+    <div className="banner-wrap relative overflow-x-clip overflow-y-visible bg-home-one-gradient-banner pb-8 pt-[calc(7rem+var(--maintenance-banner-offset,0px))] font-dm sm:pb-10 sm:pt-[calc(7.5rem+var(--maintenance-banner-offset,0px))] lg:pb-16 lg:pt-[calc(5.5rem+var(--maintenance-banner-offset,0px))]">
       <Image
         src={shap}
         alt=""
@@ -138,18 +138,22 @@ export default function HeroOne() {
       <div className="mx-auto max-w-screen-xl min-w-0 px-4 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 pb-0">
         <div className="relative z-10 grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10 lg:pt-6">
           {/* left side */}
-          <div className="flex h-full w-full min-w-0 items-center xl:pr-8">
-            <div className="flex min-w-0 flex-col">
+          <div className="flex h-full w-full min-w-0 items-center overflow-visible xl:pr-8">
+            <div className="flex min-w-0 flex-col overflow-visible">
               {/* Badge */}
-              <div>
-                {/* <span className="inline-block py-2 px-3 rounded-full border border-brand-secondary bg-white text-sm text-brand-primary font-medium aos-init aos-animate" data-aos="fade-up" data-aos-duration="200">
+              <div className="mb-1 pt-1 sm:mb-0 sm:pt-0">
+                <span
+                  className="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-brand-secondary bg-white px-4 py-2.5 text-center text-xs font-medium leading-snug text-brand-primary sm:justify-start sm:text-sm aos-init aos-animate"
+                  data-aos="fade-up"
+                  data-aos-duration="200"
+                >
                   {content.badge}
-                </span> */}
+                </span>
               </div>
 
               {/* Heading */}
               <h1
-                className="break-words text-balance text-gray-900 font-semibold text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[80px] mt-2 mb-3 tracking-tight lg:tracking-tighter aos-init aos-animate [overflow-wrap:anywhere]"
+                className="break-words text-balance text-gray-900 font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[60px] mt-2 mb-3 tracking-tight lg:tracking-tighter aos-init aos-animate [overflow-wrap:anywhere]"
                 data-aos="fade-up"
                 data-aos-duration="400"
                 dangerouslySetInnerHTML={{ __html: content.title || fallbackContent.title }}

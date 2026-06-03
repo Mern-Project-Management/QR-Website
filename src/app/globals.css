@@ -2,6 +2,17 @@
 @import "aos/dist/aos.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+    --maintenance-banner-offset: 0px;
+}
+
+/* Keep site header/logo below the fixed maintenance ticker */
+.header-wrapper.absolute,
+.header-wrapper.fixed,
+.header-wrapper.scroll-header {
+    top: var(--maintenance-banner-offset);
+}
+
 @font-face {
     font-family: "Merri";
     src: url('/fonts/Merriweather-400.woff2') format('woff2');
@@ -610,7 +621,8 @@ body.dark {
     }
     
     .scroll-header {
-        @apply bg-white/95 shadow-md backdrop-blur-sm fixed top-0;
+        @apply bg-white/95 shadow-md backdrop-blur-sm fixed;
+        top: var(--maintenance-banner-offset);
     }
     .scroll-header.bg-color-none {
         @apply bg-transparent shadow-none;

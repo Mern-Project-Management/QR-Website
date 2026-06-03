@@ -83,7 +83,7 @@ export default function CartDropdown() {
                 <div
                     role="dialog"
                     aria-label="Cart"
-                    className="fixed left-2 right-2 top-[4.25rem] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none"
+                    className="fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none"
                 >
                     <div className="flex items-center justify-between px-4 sm:px-4.5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/50 shrink-0">
                         <h3 className="text-sm font-extrabold tracking-wide text-gray-900">Shopping Cart ({cart.length})</h3>

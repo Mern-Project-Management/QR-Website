@@ -200,7 +200,7 @@ export default function WhyChooseUs2() {
   const title = 'How it Works';
   const subtitle =
     sectionData?.parent_subtitle ||
-    'Secure • Private • Instant — The smartest way to connect without exposing personal details.';
+    'The smartest way to connect without exposing personal details.';
   const words = title.trim().split(/\s+/);
   const lastWord = words.length > 1 ? words.pop() : '';
   const firstPart = words.join(' ');

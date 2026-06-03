@@ -4,7 +4,26 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, ShieldCheck, Phone, MessageCircle, AlertTriangle, BadgeCheck, Headset, Lock, Send, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  ShieldCheck,
+  Phone,
+  MessageCircle,
+  AlertTriangle,
+  Headset,
+  Lock,
+  Send,
+  AlertCircle,
+  ChevronDown,
+  CheckCircle2,
+  ArrowLeft,
+  Car,
+  PawPrint,
+  QrCode,
+  Sparkles,
+  MapPin,
+  User,
+} from "lucide-react";
 import { getAdminOrigin } from "@/lib/adminOrigin";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import { isStaffSession } from "@/lib/resolveUserRole";
@@ -15,6 +34,41 @@ const isVehicleQrCategory = (cat: string) => /vehicle|car|bike|motor/i.test(cat)
 
 type Phase = "dispatch" | "activate" | "contact" | "blocked";
 
+interface AssetVehicle {
+  make?: string | null;
+  model?: string | null;
+  registration?: string | null;
+  nickname?: string | null;
+  variant?: string | null;
+  year?: string | null;
+  color?: string | null;
+  vin?: string | null;
+  fuel?: string | null;
+  insuranceNo?: string | null;
+}
+
+interface AssetPet {
+  name?: string | null;
+  species?: string | null;
+  breed?: string | null;
+  notes?: string | null;
+}
+
+interface AssetOwner {
+  fullName?: string | null;
+  address?: string | null;
+  customMessage?: string | null;
+}
+
+interface AssetDetails {
+  name?: string | null;
+  imagePath?: string | null;
+  category?: string | null;
+  vehicle?: AssetVehicle | null;
+  pet?: AssetPet | null;
+  owner?: AssetOwner | null;
+}
+
 interface LandingData {
   uniqueId: string;
   category: string;
@@ -23,6 +77,7 @@ interface LandingData {
   scans: number;
   defaultImagePath: string;
   assetName: string | null;
+  assetDetails?: AssetDetails | null;
   createdAt: string;
   scanUrl: string;
   prefill: { name: string; email: string } | null;
@@ -34,17 +89,195 @@ interface LandingData {
   viewerIsStaff?: boolean;
 }
 
-const Footer = () => (
-  <div className="mt-8 pb-6 text-center space-y-4 px-4">
-    <p className="text-[11px] text-gray-500 font-medium">
-      Your privacy is protected.<br />
-      Phone numbers are never shared.
-    </p>
-    <p className="text-[11px] font-medium text-gray-400">
-      Powered by <span className="text-blue-600 font-bold">Odokho Digital Service</span>
-    </p>
-  </div>
-);
+function getAssetImageSrc(imagePath: string | null | undefined, fallback = "/images/default-qr.png"): string {
+  if (!imagePath?.trim()) return fallback;
+  const path = imagePath.trim();
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("/api/") || path.startsWith("/upload")) {
+    return `${getAdminOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
+  }
+  const resolved = resolveBackendImageSrc(path, fallback);
+  return typeof resolved === "string" ? resolved : fallback;
+}
+
+function buildContactDisplay(data: LandingData) {
+  const details = data.assetDetails;
+  const category = (details?.category || data.category || "").trim();
+  const vehicle = details?.vehicle;
+  const pet = details?.pet;
+  const owner = details?.owner;
+  const isVehicle = isVehicleQrCategory(category);
+  const isPet = isPetQrCategory(category);
+
+  let primaryTitle = (data.assetName || details?.name || "").trim();
+  const subtitleLines: string[] = [];
+
+  if (isVehicle && vehicle) {
+    if (!primaryTitle) {
+      primaryTitle =
+        (vehicle.registration || vehicle.nickname || "").trim() || "Vehicle";
+    }
+    const makeModel = [vehicle.make, vehicle.model].filter(Boolean).join(" ").trim();
+    const yearColor = [vehicle.year, vehicle.color].filter(Boolean).join(" · ").trim();
+    if (makeModel) subtitleLines.push(makeModel);
+    if (yearColor) subtitleLines.push(yearColor);
+  } else if (isPet && pet) {
+    if (!primaryTitle) {
+      primaryTitle = (pet.name || "").trim() || "Pet";
+    }
+    const speciesBreed = [pet.species, pet.breed].filter(Boolean).join(" · ").trim();
+    if (speciesBreed) subtitleLines.push(speciesBreed);
+    if (pet.notes?.trim()) subtitleLines.push(pet.notes.trim());
+  }
+
+  if (!primaryTitle) {
+    primaryTitle = data.uniqueId;
+  }
+
+  const defaultMessage = isVehicle
+    ? "Thanks for caring! Please let me know if there's an issue with my vehicle."
+    : isPet
+      ? "Thanks for caring! Please let me know if you found my pet."
+      : "Thanks for reaching out!";
+
+  const ownerMessage = owner?.customMessage?.trim() || defaultMessage;
+  const imageSrc = getAssetImageSrc(details?.imagePath || data.defaultImagePath);
+  const ownerName = owner?.fullName?.trim() || "";
+
+  return { primaryTitle, subtitleLines, ownerMessage, imageSrc, ownerName, category };
+}
+
+/* ─── Design system (QR scan experience) ─── */
+const SHELL =
+  "relative mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100 font-dm text-slate-900 sm:max-w-xl lg:max-w-2xl";
+const PAGE = "flex flex-1 flex-col px-4 pb-10 pt-4 sm:px-6 sm:pt-6";
+const CARD = "rounded-2xl border border-slate-200/90 bg-white shadow-sm shadow-slate-200/40";
+const CARD_PAD = "p-5 sm:p-6";
+const LABEL = "mb-1.5 block text-xs font-semibold text-slate-700";
+const INPUT =
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+const BTN_PRIMARY =
+  "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-60";
+const BTN_SECONDARY =
+  "inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400";
+const BTN_GHOST =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400";
+
+function QrBrandMark() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25">
+        <QrCode className="h-5 w-5" aria-hidden />
+      </div>
+      <div className="leading-tight">
+        <p className="text-sm font-bold text-slate-900">Odokho</p>
+        <p className="text-[11px] font-medium text-slate-500">Secure QR Contact</p>
+      </div>
+    </div>
+  );
+}
+
+function QrPageHeader({
+  title,
+  subtitle,
+  onBack,
+  badge,
+}: {
+  title?: string;
+  subtitle?: string;
+  onBack?: () => void;
+  badge?: string;
+}) {
+  return (
+    <header className="mb-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        {onBack ? (
+          <button type="button" onClick={onBack} className={BTN_GHOST} aria-label="Go back">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+        ) : (
+          <QrBrandMark />
+        )}
+        {badge && (
+          <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+            {badge}
+          </span>
+        )}
+      </div>
+      {title && (
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">{title}</h1>
+          {subtitle && <p className="mt-2 max-w-prose text-sm leading-relaxed text-slate-600">{subtitle}</p>}
+        </div>
+      )}
+    </header>
+  );
+}
+
+function AlertBanner({
+  tone,
+  children,
+}: {
+  tone: "error" | "success" | "info";
+  children: React.ReactNode;
+}) {
+  const styles =
+    tone === "error"
+      ? "border-red-200 bg-red-50 text-red-800"
+      : tone === "success"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+        : "border-blue-200 bg-blue-50 text-blue-900";
+  return (
+    <div className={`rounded-xl border px-4 py-3 text-sm font-medium leading-relaxed ${styles}`} role="alert">
+      {children}
+    </div>
+  );
+}
+
+function PrivacyNote({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className={`${CARD} flex items-start gap-3 ${CARD_PAD}`}>
+      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+      <p className="text-sm leading-relaxed text-slate-600">
+        {children ?? (
+          <>
+            Your phone number is <span className="font-semibold text-slate-800">never shared</span> with the owner.
+            Communication stays private and masked.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-auto border-t border-slate-200/80 bg-white/80 px-4 py-6 text-center backdrop-blur-sm sm:px-6">
+      <p className="text-xs font-medium text-slate-500">Privacy-first · Numbers never exposed</p>
+      <p className="mt-2 text-xs text-slate-400">
+        Powered by <span className="font-bold text-blue-600">Odokho Digital Service</span>
+      </p>
+    </footer>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className={SHELL}>
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-20">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-2xl bg-blue-100 animate-pulse" />
+          <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        </div>
+        <div className="space-y-2 text-center">
+          <p className="text-base font-semibold text-slate-900">Loading QR</p>
+          <p className="text-sm text-slate-500">Fetching secure contact details…</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function QRLandingPage() {
   const params = useParams();
@@ -197,27 +430,22 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
     }
   }, [data, router, uniqueId, isStaff, ADMIN_ORIGIN]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[55vh] flex-col items-center justify-center gap-4 px-6 py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   if (err || !data) {
     return (
-      <div className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center px-4 py-12">
-        <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.06] p-8 text-center shadow-sm">
-          <p className="text-lg font-semibold text-red-600">Something went wrong</p>
-          <p className="mt-2 text-sm text-gray-600">{err || "This QR could not be loaded."}</p>
-          <button
-            type="button"
-            className="mt-6 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-            onClick={() => { setErr(null); reload(); }}
-          >
-            Try again
-          </button>
+      <div className={SHELL}>
+        <div className={`${PAGE} flex flex-1 flex-col justify-center`}>
+          <div className={`${CARD} ${CARD_PAD} text-center`}>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+              <AlertCircle className="h-7 w-7 text-red-600" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">Unable to load QR</h1>
+            <p className="mt-2 text-sm text-slate-600">{err || "This QR could not be loaded. Check the code and try again."}</p>
+            <button type="button" className={`${BTN_PRIMARY} mt-6`} onClick={() => { setErr(null); reload(); }}>
+              Try again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -228,14 +456,14 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   const isNotActive = data.phase === "blocked" || data.phase === "dispatch";
 
   return (
-    <div className="mx-auto max-w-md bg-white min-h-screen">
-      {isNotActive && <BlockedSection />}
-      {data.phase === "activate" && (
-        <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} />
-      )}
-      {data.phase === "contact" && (
-        <ContactSection uniqueId={uniqueId} data={data} />
-      )}
+    <div className={SHELL}>
+      <main className="flex flex-1 flex-col">
+        {isNotActive && <BlockedSection />}
+        {data.phase === "activate" && (
+          <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} />
+        )}
+        {data.phase === "contact" && <ContactSection uniqueId={uniqueId} data={data} />}
+      </main>
       {!isNotActive && <Footer />}
     </div>
   );
@@ -243,44 +471,94 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
 
 function BlockedSection() {
   return (
-    <div className="flex flex-col items-center pt-12 px-6">
-      <div className="h-24 w-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
-        <AlertTriangle className="h-12 w-12 text-red-500" />
+    <div className={PAGE}>
+      <QrPageHeader badge="Inactive" />
+      <div className={`${CARD} ${CARD_PAD} text-center`}>
+        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
+          <AlertTriangle className="h-10 w-10 text-amber-600" aria-hidden />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900">QR not active yet</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+          This code hasn&apos;t been linked to an owner, or it has been temporarily disabled.
+        </p>
       </div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">This QR Code is<br />Not Active</h2>
-      <p className="text-center text-gray-500 mb-8 px-4 text-sm leading-relaxed">
-        This QR hasn&apos;t been linked to an owner yet or is temporarily disabled.
-      </p>
-      <div className="w-full space-y-3">
-        <button className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2">
-          <Headset className="w-5 h-5" />
-          Contact Support
-        </button>
-        <button className="w-full bg-white border border-blue-200 text-blue-600 rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 shadow-sm">
-          <Phone className="w-5 h-5" />
-          Call Support
-        </button>
+      <div className="mt-6 space-y-3">
+        <Link href="/contact" className={BTN_PRIMARY}>
+          <Headset className="h-5 w-5" />
+          Contact support
+        </Link>
+        <a href="tel:+911234567890" className={BTN_SECONDARY}>
+          <Phone className="h-5 w-5" />
+          Call support
+        </a>
       </div>
-      <div className="w-full mt-8 flex items-center justify-center gap-3 bg-[#F4F7FF] p-4 rounded-xl">
-        <ShieldCheck className="w-5 h-5 text-blue-600" />
-        <p className="text-xs text-gray-600 font-medium leading-tight">Only verified owners can<br />activate Odokho QR</p>
+      <div className="mt-6">
+        <PrivacyNote>Only verified owners can activate an Odokho QR and enable secure contact.</PrivacyNote>
       </div>
     </div>
   );
 }
 
-// Reusable input styles
-const fieldClass =
-  "w-full border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white font-medium placeholder-gray-400 shadow-sm";
-const labelClass = "block text-[11px] font-bold text-gray-900 mb-1.5";
-const sectionTitleClass =
-  "flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-blue-700 mb-3";
-
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function FormSection({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className={sectionTitleClass}>
-      <span className="bg-blue-50 text-blue-700 rounded-md p-1">{icon}</span>
-      {title}
+    <section className={`${CARD} ${CARD_PAD} space-y-4`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+          {icon}
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+          {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PhoneInput({
+  value,
+  onChange,
+  required,
+  placeholder = "Mobile number",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex gap-2">
+      <div className="relative w-[5.5rem] shrink-0">
+        <select
+          className={`${INPUT} appearance-none pr-8 font-semibold`}
+          defaultValue="+91"
+          aria-label="Country code"
+        >
+          <option>+91</option>
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+      </div>
+      <input
+        required={required}
+        type="tel"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 15))}
+        className={INPUT}
+        placeholder={placeholder}
+        autoComplete="tel"
+      />
     </div>
   );
 }
@@ -405,27 +683,22 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
 
   if (activated) {
     return (
-      <div className="flex flex-col px-5 pt-12 pb-10">
-        <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-600 text-white">
-            <CheckCircle2 className="h-6 w-6" />
+      <div className={PAGE}>
+        <QrPageHeader badge="Active" />
+        <div className={`${CARD} ${CARD_PAD} text-center`}>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30">
+            <CheckCircle2 className="h-7 w-7" />
           </div>
-          <h2 className="text-xl font-extrabold text-gray-900">QR Activated Successfully</h2>
-          <p className="mt-2 text-sm font-medium text-gray-600">
-            We&apos;ve sent a welcome email with the login link. Please check your inbox (and spam folder).
+          <h1 className="text-xl font-bold text-slate-900">You&apos;re all set</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Your QR is active. We sent a welcome email with your login link — check inbox and spam.
           </p>
-          <div className="mt-5 grid grid-cols-1 gap-3">
-            <Link
-              href="/login"
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-extrabold text-white hover:bg-blue-700 transition"
-            >
-              Go to Login
+          <div className="mt-6 space-y-3">
+            <Link href="/login" className={BTN_PRIMARY}>
+              Go to login
             </Link>
-            <Link
-              href="/"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-bold text-gray-800 hover:bg-gray-50 transition"
-            >
-              Back to Home
+            <Link href="/" className={BTN_SECONDARY}>
+              Back to home
             </Link>
           </div>
         </div>
@@ -433,276 +706,192 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
     );
   }
 
-  return (
-    <div className="flex flex-col px-5 pt-8 pb-6">
-      {/* Hero */}
-      <div className="mb-6">
-        <h2 className="text-[26px] font-bold text-gray-900 leading-tight tracking-tight">{heading}</h2>
-        <p className="text-sm text-gray-500 mt-2 leading-relaxed">{subheading}</p>
-      </div>
+  const trustItems = [
+    { icon: Lock, label: "Privacy protected" },
+    { icon: Phone, label: "Masked calls" },
+    { icon: ShieldCheck, label: "Verified safety" },
+  ];
 
-      {/* Trust badges */}
-      <div className="grid grid-cols-3 gap-3 mb-7">
-        {[
-          { icon: <Lock className="w-4 h-4 text-white" />, label: "Privacy\nProtected" },
-          { icon: <Phone className="w-4 h-4 text-white" />, label: "Secure\nCalling" },
-          { icon: <ShieldCheck className="w-4 h-4 text-white" />, label: "Enhanced\nSafety" },
-        ].map((b) => (
-          <div key={b.label} className="flex flex-col items-center gap-2 text-center bg-blue-50/60 rounded-xl py-3">
-            <div className="bg-blue-600 rounded-lg p-1.5">{b.icon}</div>
-            <span className="text-[10px] font-bold text-gray-700 whitespace-pre-line leading-tight">
-              {b.label}
-            </span>
+  return (
+    <div className={PAGE}>
+      <QrPageHeader title={heading} subtitle={subheading} badge="Activate" />
+
+      <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+        {trustItems.map(({ icon: Icon, label }) => (
+          <div key={label} className="flex flex-col items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-2 py-3 text-center shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <Icon className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-bold leading-tight text-slate-700 sm:text-[11px]">{label}</span>
           </div>
         ))}
       </div>
 
-      <form onSubmit={submit} className="space-y-7">
-        {/* Personal */}
-        <section>
-          <SectionHeader icon={<BadgeCheck className="w-3.5 h-3.5" />} title="Personal Information" />
+      <form onSubmit={submit} className="space-y-5">
+        <FormSection
+          icon={<User className="h-5 w-5" />}
+          title="Personal information"
+          description="How finders and support can reach you."
+        >
           <div className="space-y-4">
             <div>
-              <label className={labelClass}>Full Name</label>
+              <label className={LABEL}>Full name</label>
               <input
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className={fieldClass}
-                placeholder="Enter your full name"
+                className={INPUT}
+                placeholder="Your full name"
+                autoComplete="name"
               />
             </div>
-
             <div>
-              <label className={labelClass}>Mobile Number</label>
-              <div className="flex gap-2 shadow-sm rounded-xl">
-                <div className="relative w-[85px]">
-                  <select className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] bg-white font-bold text-gray-900 outline-none">
-                    <option>+91</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-900" />
-                </div>
-                <input
-                  required
-                  type="tel"
-                  inputMode="numeric"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3.5 text-[13px] outline-none bg-white font-medium placeholder-gray-400"
-                  placeholder="Enter mobile number"
-                />
-              </div>
+              <label className={LABEL}>Mobile number</label>
+              <PhoneInput value={phone} onChange={setPhone} required />
             </div>
-
             <div>
-              <label className={labelClass}>Email <span className="text-gray-400 font-medium">(optional)</span></label>
+              <label className={LABEL}>
+                Email <span className="font-normal text-slate-400">(optional)</span>
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={fieldClass}
+                className={INPUT}
                 placeholder="you@example.com"
+                autoComplete="email"
               />
             </div>
-
             <div>
-              <label className={labelClass}>Address <span className="text-gray-400 font-medium">(optional)</span></label>
+              <label className={LABEL}>
+                Address <span className="font-normal text-slate-400">(optional)</span>
+              </label>
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className={fieldClass}
-                placeholder="House/Street, City"
+                className={INPUT}
+                placeholder="House / street, city"
+                autoComplete="street-address"
               />
             </div>
           </div>
-        </section>
+        </FormSection>
 
-        {/* Vehicle Details */}
         {isVehicle && (
-          <section>
-            <SectionHeader icon={<CheckCircle2 className="w-3.5 h-3.5" />} title="Vehicle Details" />
+          <FormSection icon={<Car className="h-5 w-5" />} title="Vehicle details" description="Shown to people who scan your QR.">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Make</label>
-                  <input
-                    required
-                    value={vehicleMake}
-                    onChange={(e) => setVehicleMake(e.target.value)}
-                    className={fieldClass}
-                    placeholder="e.g. Hyundai"
-                  />
+                  <label className={LABEL}>Make</label>
+                  <input required value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className={INPUT} placeholder="Hyundai" />
                 </div>
                 <div>
-                  <label className={labelClass}>Model</label>
-                  <input
-                    required
-                    value={vehicleModel}
-                    onChange={(e) => setVehicleModel(e.target.value)}
-                    className={fieldClass}
-                    placeholder="e.g. i20"
-                  />
+                  <label className={LABEL}>Model</label>
+                  <input required value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className={INPUT} placeholder="i20" />
                 </div>
               </div>
-
               <div>
-                <label className={labelClass}>Registration Number</label>
+                <label className={LABEL}>Registration number</label>
                 <input
                   required
                   value={vehicleReg}
                   onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
-                  className={fieldClass}
-                  placeholder="e.g. GJ01AB1234"
+                  className={INPUT}
+                  placeholder="GJ01AB1234"
                 />
               </div>
-
               <div>
-                <label className={labelClass}>
-                  Nickname <span className="text-gray-400 font-medium">(optional)</span>
+                <label className={LABEL}>
+                  Nickname <span className="font-normal text-slate-400">(optional)</span>
                 </label>
-                <input
-                  value={vehicleNickname}
-                  onChange={(e) => setVehicleNickname(e.target.value)}
-                  className={fieldClass}
-                  placeholder="e.g. My Daily Ride"
-                />
+                <input value={vehicleNickname} onChange={(e) => setVehicleNickname(e.target.value)} className={INPUT} placeholder="My daily ride" />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>
-                    Color <span className="text-gray-400 font-medium">(optional)</span>
+                  <label className={LABEL}>
+                    Color <span className="font-normal text-slate-400">(optional)</span>
                   </label>
-                  <input
-                    value={vehicleColor}
-                    onChange={(e) => setVehicleColor(e.target.value)}
-                    className={fieldClass}
-                    placeholder="e.g. White"
-                  />
+                  <input value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} className={INPUT} placeholder="White" />
                 </div>
                 <div>
-                  <label className={labelClass}>
-                    Year <span className="text-gray-400 font-medium">(optional)</span>
+                  <label className={LABEL}>
+                    Year <span className="font-normal text-slate-400">(optional)</span>
                   </label>
                   <input
                     inputMode="numeric"
                     value={vehicleYear}
                     onChange={(e) => setVehicleYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className={fieldClass}
-                    placeholder="e.g. 2022"
+                    className={INPUT}
+                    placeholder="2022"
                   />
                 </div>
               </div>
             </div>
-          </section>
+          </FormSection>
         )}
 
-        {/* Pet Details */}
         {isPet && (
-          <section>
-            <SectionHeader icon={<CheckCircle2 className="w-3.5 h-3.5" />} title="Pet Details" />
+          <FormSection icon={<PawPrint className="h-5 w-5" />} title="Pet details" description="Helps finders identify your pet quickly.">
             <div className="space-y-4">
               <div>
-                <label className={labelClass}>Pet Name</label>
-                <input
-                  required
-                  value={petName}
-                  onChange={(e) => setPetName(e.target.value)}
-                  className={fieldClass}
-                  placeholder="e.g. Bruno"
-                />
+                <label className={LABEL}>Pet name</label>
+                <input required value={petName} onChange={(e) => setPetName(e.target.value)} className={INPUT} placeholder="Bruno" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>
-                    Species <span className="text-gray-400 font-medium">(optional)</span>
+                  <label className={LABEL}>
+                    Species <span className="font-normal text-slate-400">(optional)</span>
                   </label>
-                  <input
-                    value={petSpecies}
-                    onChange={(e) => setPetSpecies(e.target.value)}
-                    className={fieldClass}
-                    placeholder="Dog / Cat / Other"
-                  />
+                  <input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} className={INPUT} placeholder="Dog" />
                 </div>
                 <div>
-                  <label className={labelClass}>
-                    Breed <span className="text-gray-400 font-medium">(optional)</span>
+                  <label className={LABEL}>
+                    Breed <span className="font-normal text-slate-400">(optional)</span>
                   </label>
-                  <input
-                    value={petBreed}
-                    onChange={(e) => setPetBreed(e.target.value)}
-                    className={fieldClass}
-                    placeholder="e.g. Labrador"
-                  />
+                  <input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} className={INPUT} placeholder="Labrador" />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>
-                  Notes for Finder <span className="text-gray-400 font-medium">(optional)</span>
+                <label className={LABEL}>
+                  Notes for finder <span className="font-normal text-slate-400">(optional)</span>
                 </label>
                 <textarea
                   rows={3}
                   value={petNotes}
                   onChange={(e) => setPetNotes(e.target.value)}
-                  className={`${fieldClass} resize-none`}
-                  placeholder="e.g. Friendly, not microchipped, on medication"
+                  className={`${INPUT} resize-none`}
+                  placeholder="Friendly, medication, microchip, etc."
                 />
               </div>
             </div>
-          </section>
+          </FormSection>
         )}
 
-        {/* Emergency Contacts */}
-        <section>
-          <SectionHeader icon={<AlertCircle className="w-3.5 h-3.5" />} title="Emergency Contacts" />
-          <p className="text-[12px] text-gray-500 -mt-1 mb-3">
-            Two different numbers we can alert if something happens.
-          </p>
+        <FormSection
+          icon={<AlertCircle className="h-5 w-5" />}
+          title="Emergency contacts"
+          description="Two different numbers we alert in urgent situations."
+        >
           <div className="space-y-4">
             <div>
-              <label className={labelClass}>Emergency Contact 1</label>
-              <input
-                required
-                type="tel"
-                inputMode="numeric"
-                value={emergency1}
-                onChange={(e) => setEmergency1(e.target.value.replace(/\D/g, "").slice(0, 15))}
-                className={fieldClass}
-                placeholder="Enter number"
-              />
+              <label className={LABEL}>Contact 1</label>
+              <PhoneInput value={emergency1} onChange={setEmergency1} required placeholder="Primary emergency" />
             </div>
             <div>
-              <label className={labelClass}>Emergency Contact 2</label>
-              <input
-                required
-                type="tel"
-                inputMode="numeric"
-                value={emergency2}
-                onChange={(e) => setEmergency2(e.target.value.replace(/\D/g, "").slice(0, 15))}
-                className={fieldClass}
-                placeholder="Enter number"
-              />
+              <label className={LABEL}>Contact 2</label>
+              <PhoneInput value={emergency2} onChange={setEmergency2} required placeholder="Secondary emergency" />
             </div>
           </div>
-        </section>
+        </FormSection>
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <AlertBanner tone="error">{error}</AlertBanner>}
 
-        <div className="pt-1">
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-[#1E62F1] hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl py-4 text-[15px] font-bold shadow-md transition"
-          >
+        <div className="sticky bottom-0 -mx-4 border-t border-slate-200/80 bg-white/95 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+          <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+            <Sparkles className="h-4 w-4" />
             {saving ? "Activating…" : "Activate QR"}
           </button>
-          <p className="text-[11px] text-center text-gray-400 mt-3">
-            By activating you agree to our privacy-first contact flow.
-          </p>
+          <p className="mt-3 text-center text-xs text-slate-500">By activating you agree to our privacy-first contact policy.</p>
         </div>
       </form>
     </div>
@@ -718,157 +907,239 @@ const REASONS = ["Wrong Parking", "Lights On", "Door Open", "Tow Alert", "Accide
 
 function ContactSection({ uniqueId, data }: ContactSectionProps) {
   const [view, setView] = useState<ContactView>("contact");
+  const [verifyMode, setVerifyMode] = useState<"call" | "sms">("call");
   const [selectedReason, setSelectedReason] = useState<(typeof REASONS)[number]>("Wrong Parking");
 
-  const defaultQrImageSrc = "/images/default-qr.png";
-  const bgImg = data?.defaultImagePath ? resolveBackendImageSrc(data.defaultImagePath, defaultQrImageSrc) : defaultQrImageSrc;
+  const display = useMemo(() => buildContactDisplay(data), [data]);
+  const isVehicle = isVehicleQrCategory(display.category);
 
-  if (view === "verify") return <VerifyNumberView setView={setView} />;
-  if (view === "emergency") return <ReportEmergencyView setView={setView} uniqueId={uniqueId} />;
+  const openVerify = (mode: "call" | "sms") => {
+    setVerifyMode(mode);
+    setView("verify");
+  };
+
+  if (view === "verify") {
+    return (
+      <VerifyNumberView
+        setView={setView}
+        assetLabel={display.primaryTitle}
+        mode={verifyMode}
+        reason={selectedReason}
+      />
+    );
+  }
+  if (view === "emergency") {
+    return (
+      <ReportEmergencyView setView={setView} uniqueId={uniqueId} assetLabel={display.primaryTitle} />
+    );
+  }
 
   return (
-    <div className="flex flex-col px-4 pt-4 space-y-5">
-      {/* Top Card */}
-      <div className="rounded-[20px] bg-gradient-to-br from-[#1E62F1] to-[#0A41B5] p-4 flex gap-4 text-white shadow-lg relative overflow-hidden items-center h-[120px]">
-        <div className="w-[100px] h-[88px] bg-white/10 rounded-xl flex-shrink-0 flex items-center justify-center relative z-10 overflow-hidden shadow-inner">
-          <Image src={bgImg as string} alt="Vehicle" layout="fill" objectFit="cover" className="rounded-xl" />
-        </div>
-        <div className="flex flex-col justify-center z-10 pt-1">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <h3 className="text-xl font-bold tracking-tight">{data?.assetName || "GJ01AB1234"}</h3>
-            <div className="bg-white rounded-full flex items-center justify-center w-5 h-5">
-              <CheckCircle2 className="w-5 h-5 text-blue-600" />
+    <div className={PAGE}>
+      <QrPageHeader title="Contact owner" subtitle="Choose how to reach them securely. Your number stays private." badge="Active" />
+
+      {/* Asset hero — light card + dark text for reliable contrast */}
+      <div
+        className={`${CARD} relative mb-6 overflow-hidden border-l-4 border-l-blue-600 ${CARD_PAD}`}
+        style={{
+          background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #f8fafc 100%)",
+        }}
+      >
+        <div className="relative flex items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-800">
+                {isVehicle ? "Vehicle" : isPetQrCategory(display.category) ? "Pet" : display.category}
+              </span>
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             </div>
+            <h2 className="break-words text-xl font-bold leading-tight tracking-tight text-slate-900 sm:text-2xl">
+              {display.primaryTitle}
+            </h2>
+            {display.subtitleLines.length > 0 ? (
+              <p className="mt-2 break-words text-sm font-medium leading-relaxed text-slate-600">
+                {display.subtitleLines.join(" • ")}
+              </p>
+            ) : (
+              <p className="mt-2 break-words text-sm capitalize text-slate-600">{display.category}</p>
+            )}
           </div>
-          <p className="text-blue-100 text-[13px] font-medium leading-snug">Hyundai i20<br />White</p>
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:h-24 sm:w-24">
+            <Image
+              src={display.imageSrc}
+              alt={display.primaryTitle}
+              fill
+              sizes="96px"
+              className="object-contain p-2"
+              unoptimized={display.imageSrc.startsWith("http")}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Owner Message */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 px-1">
-          <MessageCircle className="w-4 h-4 text-blue-600 fill-blue-600" />
-          <span className="text-[13px] font-bold text-gray-900">Owner Message</span>
+      {/* Owner message */}
+      <div className={`${CARD} mb-6 overflow-hidden`}>
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <MessageCircle className="h-4 w-4 text-blue-600" />
+            {display.ownerName ? `Message from ${display.ownerName}` : "Owner message"}
+          </p>
         </div>
-        <div className="bg-[#F4F7FF] text-gray-800 text-[13px] font-medium p-4 rounded-2xl rounded-tl-sm shadow-sm leading-relaxed">
-          Thanks for caring! Please let me know if there&apos;s an issue with my vehicle. 🙏
-        </div>
+        <p className="px-5 py-4 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{display.ownerMessage}</p>
       </div>
 
-      {/* Contact Reasons */}
-      <div className="space-y-2.5">
-        <h4 className="text-[13px] font-bold text-gray-900 px-1">Why are you contacting the owner?</h4>
-        <div className="flex flex-wrap gap-2">
-          {REASONS.map(r => (
-            <button
-              key={r}
-              onClick={() => setSelectedReason(r)}
-              className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all shadow-sm ${selectedReason === r ? 'bg-[#1E62F1] text-white border border-[#1E62F1]' : 'bg-white border border-gray-200 text-gray-700'}`}
-            >
-              {r}
-            </button>
-          ))}
+      {/* Reason */}
+      <div className="mb-6">
+        <h3 className="mb-3 text-sm font-bold text-slate-900">What&apos;s the reason?</h3>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Contact reason">
+          {REASONS.map((r) => {
+            const selected = selectedReason === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setSelectedReason(r)}
+                aria-pressed={selected}
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                  selected
+                    ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {r}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="space-y-3 pt-1">
-        <button onClick={() => setView('verify')} className="w-full bg-[#22C55E] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-green-600/30">
-          <div className="flex items-center gap-2 font-bold text-[15px]">
-            <Phone className="w-[18px] h-[18px] fill-white" />
-            Call Owner Securely
+      <div className="mb-6 space-y-3">
+        <h3 className="text-sm font-bold text-slate-900">How would you like to connect?</h3>
+
+        <button
+          type="button"
+          onClick={() => openVerify("call")}
+          className={`${CARD} flex w-full items-center gap-4 p-4 text-left transition hover:border-emerald-200 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600`}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+            <Phone className="h-5 w-5" />
           </div>
-          <span className="text-[11px] text-green-100 font-medium tracking-wide">Connect via masked number</span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-900">Call owner securely</p>
+            <p className="text-xs text-slate-500">Masked number · verify once</p>
+          </div>
+          <ChevronDown className="-rotate-90 h-5 w-5 text-slate-400" />
         </button>
-        <button onClick={() => setView('verify')} className="w-full bg-[#F97316] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-orange-600/30">
-          <div className="flex items-center gap-2 font-bold text-[15px]">
-            <MessageCircle className="w-[18px] h-[18px] fill-white" />
-            SMS Owner Securely
+
+        <button
+          type="button"
+          onClick={() => openVerify("sms")}
+          className={`${CARD} flex w-full items-center gap-4 p-4 text-left transition hover:border-orange-200 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500`}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+            <MessageCircle className="h-5 w-5" />
           </div>
-          <span className="text-[11px] text-orange-100 font-medium tracking-wide">Send a private SMS securely</span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-900">SMS owner securely</p>
+            <p className="text-xs text-slate-500">Private text · same verification</p>
+          </div>
+          <ChevronDown className="-rotate-90 h-5 w-5 text-slate-400" />
         </button>
-        <button onClick={() => setView('emergency')} className="w-full bg-[#EF4444] text-white rounded-xl py-3 flex flex-col items-center justify-center gap-0.5 shadow-md border-b-4 border-red-600/30">
-          <div className="flex items-center gap-2 font-bold text-[15px]">
-            <AlertTriangle className="w-[18px] h-[18px] fill-white" />
-            Report Emergency
+
+        <button
+          type="button"
+          onClick={() => setView("emergency")}
+          className={`${CARD} flex w-full items-center gap-4 border-red-200/80 p-4 text-left transition hover:border-red-300 hover:bg-red-50/30 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600`}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white">
+            <AlertTriangle className="h-5 w-5" />
           </div>
-          <span className="text-[11px] text-red-100 font-medium tracking-wide">Use only in urgent situations</span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-red-900">Report emergency</p>
+            <p className="text-xs text-red-700/80">Urgent only · alerts owner & contacts</p>
+          </div>
+          <ChevronDown className="-rotate-90 h-5 w-5 text-red-400" />
         </button>
       </div>
 
-      {/* Info */}
-      <div className="flex items-center justify-center gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-gray-100 mt-2">
-        <ShieldCheck className="w-[22px] h-[22px] text-blue-600 flex-shrink-0" />
-        <p className="text-[11px] text-gray-700 font-medium leading-relaxed">
-          Your number is never shared.<br />Calls are masked for your privacy.
-        </p>
-      </div>
+      <PrivacyNote />
     </div>
   );
 }
 
 interface VerifyNumberViewProps {
   setView: React.Dispatch<React.SetStateAction<ContactView>>;
+  assetLabel?: string;
+  mode?: "call" | "sms";
+  reason?: string;
 }
 
-function VerifyNumberView({ setView }: VerifyNumberViewProps) {
+function VerifyNumberView({ setView, assetLabel, mode = "call", reason }: VerifyNumberViewProps) {
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const title = mode === "sms" ? "Verify for SMS" : "Verify for call";
+  const Icon = mode === "sms" ? MessageCircle : Phone;
+
   return (
-    <div className="flex flex-col pt-12 px-5">
-      <div className="flex justify-center mb-6">
-        <div className="relative">
-          <div className="w-24 h-24 bg-[#F0F5FF] rounded-full flex items-center justify-center relative z-10 shadow-inner">
-            <ShieldCheck className="w-10 h-10 text-blue-600" />
-          </div>
-          <div className="absolute top-2 -right-4 w-6 h-6 bg-blue-100 rounded-full opacity-60"></div>
-          <div className="absolute bottom-0 -left-6 w-10 h-10 bg-blue-50 rounded-full opacity-80"></div>
+    <div className={PAGE}>
+      <QrPageHeader
+        title={title}
+        subtitle={
+          assetLabel
+            ? `Quick verification before contacting ${assetLabel}.`
+            : "We verify your number once to prevent misuse."
+        }
+        onBack={() => setView("contact")}
+        badge="Step 2"
+      />
+
+      {reason && (
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <span className="font-semibold text-slate-800">Reason:</span> {reason}
         </div>
+      )}
+
+      <div className={`${CARD} ${CARD_PAD} mb-6 text-center`}>
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+          <Icon className="h-8 w-8 text-blue-600" />
+        </div>
+        <p className="text-sm text-slate-600">One-time verification keeps owners safe from spam.</p>
       </div>
-      <h2 className="text-[26px] font-bold text-gray-900 text-center mb-1">Verify Your Number</h2>
-      <p className="text-center text-gray-500 mb-10 px-2 text-[13px] leading-relaxed">
-        We verify your number to prevent<br />misuse and enable secure communication.
-      </p>
 
-      <form className="space-y-6">
+      <form className="space-y-5">
         <div>
-          <label className="block text-[11px] font-bold text-gray-900 mb-1.5">Mobile Number</label>
-          <div className="flex gap-2 shadow-sm rounded-xl">
-            <div className="relative w-[85px]">
-              <select className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-4 text-[14px] bg-white font-bold text-gray-900 outline-none">
-                <option>+91</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-900" />
-            </div>
-            <input className="flex-1 border border-gray-200 rounded-xl px-4 py-4 text-[14px] outline-none bg-white font-medium placeholder-gray-400" placeholder="Enter mobile number" />
-          </div>
+          <label className={LABEL}>Your mobile number</label>
+          <PhoneInput value={phone} onChange={setPhone} required />
         </div>
-
         <div>
-          <label className="block text-[11px] font-bold text-gray-900 mb-1.5">Enter OTP</label>
-          <input className="w-full border border-gray-200 rounded-xl px-4 py-4 text-[14px] outline-none bg-white font-medium placeholder-gray-400 shadow-sm" placeholder="Enter 6-digit OTP" />
+          <label className={LABEL}>Enter OTP</label>
+          <input
+            className={INPUT}
+            placeholder="6-digit code"
+            inputMode="numeric"
+            maxLength={6}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
           <div className="mt-2 text-right">
-            <button type="button" className="text-[12px] font-bold text-[#1E62F1]">Resend OTP (00:30)</button>
+            <button type="button" className="text-xs font-bold text-blue-600 hover:text-blue-700">
+              Resend OTP
+            </button>
           </div>
         </div>
 
-        <div className="pt-2 space-y-3">
-          <button type="button" className="w-full bg-[#1E62F1] text-white rounded-xl py-4 font-bold shadow-md text-[15px]">
-            Verify & Continue
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("contact")}
-            className="w-full text-[13px] font-bold text-gray-500 py-2"
-          >
-            Cancel
-          </button>
-        </div>
+        <button type="button" className={BTN_PRIMARY}>
+          <ShieldCheck className="h-4 w-4" />
+          Verify & continue
+        </button>
+        <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
+          Cancel
+        </button>
       </form>
 
-      <div className="mt-8 flex items-center justify-center gap-3 bg-[#F4F7FF] p-4 rounded-xl">
-        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
-        <p className="text-[12px] font-medium text-gray-800 leading-relaxed">
-          We never share your number<br />with the vehicle owner.
-        </p>
+      <div className="mt-6">
+        <PrivacyNote>We never share your number with the owner.</PrivacyNote>
       </div>
     </div>
   );
@@ -877,9 +1148,10 @@ function VerifyNumberView({ setView }: VerifyNumberViewProps) {
 interface ReportEmergencyViewProps {
   setView: React.Dispatch<React.SetStateAction<ContactView>>;
   uniqueId: string;
+  assetLabel?: string;
 }
 
-function ReportEmergencyView({ setView, uniqueId }: ReportEmergencyViewProps) {
+function ReportEmergencyView({ setView, uniqueId, assetLabel }: ReportEmergencyViewProps) {
   const issues = [
     { id: "accident", label: "Accident" },
     { id: "damage", label: "Vehicle Damage" },
@@ -998,146 +1270,118 @@ function ReportEmergencyView({ setView, uniqueId }: ReportEmergencyViewProps) {
   };
 
   return (
-    <div className="flex flex-col pt-10 px-5 pb-8">
-      <div className="flex justify-center mb-5">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
-          <AlertTriangle className="w-10 h-10 text-red-500" />
-        </div>
-      </div>
-
-      <h2 className="text-[24px] font-bold text-gray-900 text-center mb-2">Report Emergency</h2>
-      <p className="text-center text-gray-500 mb-8 px-4 text-[13px] leading-relaxed">
-        Help the owner and emergency contacts<br />by reporting the situation.
-      </p>
+    <div className={PAGE}>
+      <QrPageHeader
+        title={step === "verify" ? "Confirm emergency" : "Report emergency"}
+        subtitle={
+          assetLabel
+            ? `Urgent alert for ${assetLabel}. Owner and emergency contacts will be notified.`
+            : "Help the owner and their emergency contacts immediately."
+        }
+        onBack={() => (step === "verify" ? setStep("form") : setView("contact"))}
+        badge="Urgent"
+      />
 
       {step === "form" && (
-        <>
-          <div className="space-y-3 mb-6">
-            <h4 className="text-[13px] font-bold text-gray-900 mb-2">What&apos;s the issue?</h4>
-            <div className="space-y-2">
+        <div className="space-y-5">
+          <FormSection icon={<AlertTriangle className="h-5 w-5 text-red-600" />} title="What happened?" description="Select the closest match.">
+            <div className="space-y-2" role="radiogroup" aria-label="Emergency issue type">
               {issues.map((issue) => {
                 const isSelected = selectedIssue === issue.id;
                 return (
-                  <label
+                  <button
                     key={issue.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
                     onClick={() => setSelectedIssue(issue.id)}
-                    className={`flex items-center justify-between p-3.5 rounded-[14px] border cursor-pointer transition-all ${
-                      isSelected ? "border-red-400 bg-red-50/50" : "border-gray-200 bg-white"
+                    className={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 ${
+                      isSelected ? "border-red-300 bg-red-50" : "border-slate-200 bg-white hover:bg-slate-50"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                          isSelected ? "bg-red-100" : "bg-gray-100"
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                          isSelected ? "bg-red-600 text-white" : "bg-slate-100 text-slate-500"
                         }`}
                       >
-                        {isSelected ? (
-                          <AlertTriangle className="w-4 h-4 text-red-600" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-gray-500" />
-                        )}
-                      </div>
-                      <span className={`text-[14px] font-bold ${isSelected ? "text-gray-900" : "text-gray-700"}`}>
-                        {issue.label}
+                        <AlertTriangle className="h-4 w-4" />
                       </span>
-                    </div>
-                    <div
-                      className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
-                        isSelected ? "border-blue-600 bg-white" : "border-gray-300"
+                      <span className="text-sm font-semibold text-slate-900">{issue.label}</span>
+                    </span>
+                    <span
+                      className={`h-5 w-5 rounded-full border-2 ${
+                        isSelected ? "border-red-600 bg-red-600 ring-4 ring-red-100" : "border-slate-300"
                       }`}
-                    >
-                      {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
-                    </div>
-                  </label>
+                    />
+                  </button>
                 );
               })}
             </div>
-          </div>
+          </FormSection>
 
-          <div className="mb-6">
-            <h4 className="text-[13px] font-bold text-gray-900 mb-1">Your contact number</h4>
-            <p className="text-[11px] text-gray-500 mb-3 font-medium">
-              We&apos;ll send a one-time code to verify it&apos;s really you.
-            </p>
-            <input
-              type="tel"
-              inputMode="numeric"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
-              className={fieldClass}
-              placeholder="Enter mobile number"
-            />
-          </div>
+          <FormSection icon={<Phone className="h-5 w-5" />} title="Your number" description="We'll send a one-time code to verify you.">
+            <PhoneInput value={contactPhone} onChange={setContactPhone} required />
+          </FormSection>
 
-          <div className="mb-6">
-            <h4 className="text-[13px] font-bold text-gray-900 mb-1">Share Location</h4>
-            <p className="text-[11px] text-gray-500 mb-3 font-medium">
-              Location access helps notify the owner and nearby help faster.
-            </p>
-            <div className="flex items-center justify-between p-3.5 border border-gray-200 rounded-[14px] bg-white">
-              <span className="text-[13px] font-bold text-gray-800">Use my current location</span>
-              <button
-                type="button"
-                onClick={() => setUseLocation((v) => !v)}
-                className={`w-[42px] h-6 rounded-full p-[2px] transition-colors ${useLocation ? "bg-blue-600" : "bg-gray-300"}`}
-                aria-label="Toggle location"
-              >
-                <div
-                  className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${useLocation ? "translate-x-[18px]" : "translate-x-0"}`}
-                />
-              </button>
+          <div className={`${CARD} flex items-center justify-between ${CARD_PAD}`}>
+            <div className="pr-4">
+              <p className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                Share location
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Helps the owner respond faster.</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setUseLocation((v) => !v)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${useLocation ? "bg-blue-600" : "bg-slate-300"}`}
+              role="switch"
+              aria-checked={useLocation}
+              aria-label="Use current location"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  useLocation ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
 
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700 mb-4">
-              {error}
-            </div>
-          )}
+          {error && <AlertBanner tone="error">{error}</AlertBanner>}
 
           <button
             type="button"
             onClick={requestOtp}
             disabled={busy || cooldown > 0}
-            className="w-full bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white rounded-xl py-4 font-bold shadow-md flex items-center justify-center gap-2 text-[15px] mb-3 transition"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition hover:bg-red-700 disabled:opacity-60"
           >
-            <Send className="w-4 h-4" />
-            {busy ? "Sending OTP…" : cooldown > 0 ? `Wait ${cooldown}s` : "Send OTP & Continue"}
+            <Send className="h-4 w-4" />
+            {busy ? "Sending OTP…" : cooldown > 0 ? `Wait ${cooldown}s` : "Send OTP & continue"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setView("contact")}
-            className="w-full text-[13px] font-bold text-gray-500 py-2"
-          >
+          <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
             Cancel
           </button>
-        </>
+        </div>
       )}
 
       {step === "verify" && (
-        <>
-          <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
-            <p className="text-[12px] text-gray-700">
-              We sent a code to <span className="font-bold">+91 {contactPhone}</span>.
-              <button
-                type="button"
-                onClick={() => setStep("form")}
-                className="text-blue-700 font-bold ml-1 hover:underline"
-              >
-                Change
-              </button>
-            </p>
-          </div>
+        <div className="space-y-5">
+          <AlertBanner tone="info">
+            Code sent to <span className="font-bold">+91 {contactPhone}</span>.
+            <button type="button" onClick={() => setStep("form")} className="ml-1 font-bold underline">
+              Change number
+            </button>
+          </AlertBanner>
 
-          <div className="mb-4">
-            <label className={labelClass}>Enter OTP</label>
+          <div>
+            <label className={LABEL}>Enter OTP</label>
             <input
               type="tel"
               inputMode="numeric"
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              className={fieldClass}
+              className={INPUT}
               placeholder="6-digit OTP"
               autoFocus
             />
@@ -1146,49 +1390,33 @@ function ReportEmergencyView({ setView, uniqueId }: ReportEmergencyViewProps) {
                 type="button"
                 onClick={requestOtp}
                 disabled={busy || cooldown > 0}
-                className="text-[12px] font-bold text-[#1E62F1] disabled:text-gray-400"
+                className="text-xs font-bold text-blue-600 disabled:text-slate-400"
               >
                 {cooldown > 0 ? `Resend OTP (${String(cooldown).padStart(2, "0")}s)` : "Resend OTP"}
               </button>
             </div>
           </div>
 
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700 mb-4">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-700 mb-4">
-              {success}
-            </div>
-          )}
+          {error && <AlertBanner tone="error">{error}</AlertBanner>}
+          {success && <AlertBanner tone="success">{success}</AlertBanner>}
 
           <button
             type="button"
             onClick={verifyAndSend}
             disabled={busy}
-            className="w-full bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white rounded-xl py-4 font-bold shadow-md flex items-center justify-center gap-2 text-[15px] mb-3 transition"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-red-700 disabled:opacity-60"
           >
-            <Send className="w-4 h-4" />
-            {busy ? "Sending alert…" : "Verify & Send Alert"}
+            <Send className="h-4 w-4" />
+            {busy ? "Sending alert…" : "Verify & send alert"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setView("contact")}
-            className="w-full text-[13px] font-bold text-gray-500 py-2"
-          >
+          <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
             Cancel
           </button>
-        </>
+        </div>
       )}
 
-      <div className="mt-6 flex items-center justify-center gap-3 border border-blue-100 bg-[#F4F7FF] p-4 rounded-xl">
-        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
-        <p className="text-[12px] font-medium text-gray-700 leading-relaxed">
-          Alert will be sent to the owner and<br />their emergency contacts immediately.
-        </p>
+      <div className="mt-6">
+        <PrivacyNote>Alerts go to the owner and their emergency contacts right away.</PrivacyNote>
       </div>
     </div>
   );

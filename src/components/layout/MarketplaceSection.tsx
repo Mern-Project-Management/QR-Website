@@ -151,14 +151,14 @@ const MarketplaceSection = () => {
                 <PageTitle3
                     badgeText="Partners & Storefronts"
                     title="Find Us On Marketplace"
-                    subtitle="Directly browse, shop, and checkout our official products on trusted leading marketplace storefronts."
+                    subtitle="Directly browse, shop, and checkout our official products on trusted leading marketplace ."
                     widthClass="xl:w-7/12 lg:w-2/3 mx-auto"
                     alignment="center"
                     padding="pb-10"
                     textColor=""
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="flex flex-wrap justify-center gap-6">
                     {displayCards.map((card, index) => {
                         return (
                             <a
@@ -166,7 +166,7 @@ const MarketplaceSection = () => {
                                 href={card.redirectUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group block relative w-full"
+                                className="group block w-full sm:w-[calc(50%-12px)] md:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)]"
                                 data-aos="fade-up"
                                 data-aos-delay={index * 100}
                             >
