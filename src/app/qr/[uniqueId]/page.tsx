@@ -565,6 +565,78 @@ function PhoneInput({
 
 type ContactView = "contact" | "verify" | "emergency";
 
+type ContactReasonOption = { label: string; value: string };
+
+const VEHICLE_CONTACT_REASONS: ContactReasonOption[] = [
+  { label: "Wrong Parking", value: "GENERAL" },
+  { label: "Lights On", value: "OTHER" },
+  { label: "Door Open", value: "OTHER" },
+  { label: "Tow Alert", value: "OTHER" },
+  { label: "Accident", value: "DAMAGED" },
+  { label: "Other", value: "OTHER" },
+];
+
+const PET_CONTACT_REASONS: ContactReasonOption[] = [
+  { label: "Found Pet", value: "FOUND" },
+  { label: "Lost / Escaped", value: "RETURN" },
+  { label: "Injured / Hurt", value: "DAMAGED" },
+  { label: "Needs Help", value: "GENERAL" },
+  { label: "Other", value: "OTHER" },
+];
+
+function getContactReasons(category: string): ContactReasonOption[] {
+  if (isPetQrCategory(category)) return PET_CONTACT_REASONS;
+  if (isVehicleQrCategory(category)) return VEHICLE_CONTACT_REASONS;
+  return [
+    { label: "Found Item", value: "FOUND" },
+    { label: "Return / Handover", value: "RETURN" },
+    { label: "General", value: "GENERAL" },
+    { label: "Other", value: "OTHER" },
+  ];
+}
+
+function QrFlowNav({
+  current,
+  verifyLabel = "Verify",
+}: {
+  current: ContactView;
+  verifyLabel?: string;
+}) {
+  const steps: { id: ContactView; label: string }[] = [
+    { id: "contact", label: "Contact" },
+    { id: "verify", label: verifyLabel },
+    { id: "emergency", label: "Emergency" },
+  ];
+  const currentIndex = steps.findIndex((s) => s.id === current);
+
+  return (
+    <nav className="mb-6" aria-label="Progress">
+      <ol className="flex items-center gap-1 overflow-x-auto pb-1 text-xs font-semibold">
+        {steps.map((step, index) => {
+          const isActive = step.id === current;
+          const isPast = index < currentIndex;
+          return (
+            <li key={step.id} className="flex shrink-0 items-center gap-1">
+              {index > 0 && <span className="text-slate-300" aria-hidden>›</span>}
+              <span
+                className={`rounded-full px-3 py-1.5 whitespace-nowrap ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : isPast
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 interface ActivateSectionProps {
   uniqueId: string;
   category: string;
@@ -903,14 +975,22 @@ interface ContactSectionProps {
   data: LandingData;
 }
 
-const REASONS = ["Wrong Parking", "Lights On", "Door Open", "Tow Alert", "Accident", "Other"] as const;
-
 function ContactSection({ uniqueId, data }: ContactSectionProps) {
   const [view, setView] = useState<ContactView>("contact");
   const [verifyMode, setVerifyMode] = useState<"call" | "sms">("call");
-  const [selectedReason, setSelectedReason] = useState<(typeof REASONS)[number]>("Wrong Parking");
 
   const display = useMemo(() => buildContactDisplay(data), [data]);
+  const contactReasons = useMemo(() => getContactReasons(display.category), [display.category]);
+  const [selectedReason, setSelectedReason] = useState(contactReasons[0]?.value ?? "GENERAL");
+
+  useEffect(() => {
+    const list = getContactReasons(display.category);
+    setSelectedReason(list[0]?.value ?? "GENERAL");
+  }, [display.category]);
+
+  const selectedReasonLabel =
+    contactReasons.find((r) => r.value === selectedReason)?.label ?? selectedReason;
+
   const isVehicle = isVehicleQrCategory(display.category);
 
   const openVerify = (mode: "call" | "sms") => {
@@ -921,21 +1001,29 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
   if (view === "verify") {
     return (
       <VerifyNumberView
+        uniqueId={uniqueId}
         setView={setView}
         assetLabel={display.primaryTitle}
         mode={verifyMode}
         reason={selectedReason}
+        reasonLabel={selectedReasonLabel}
       />
     );
   }
   if (view === "emergency") {
     return (
-      <ReportEmergencyView setView={setView} uniqueId={uniqueId} assetLabel={display.primaryTitle} />
+      <ReportEmergencyView
+        setView={setView}
+        uniqueId={uniqueId}
+        assetLabel={display.primaryTitle}
+        category={display.category}
+      />
     );
   }
 
   return (
     <div className={PAGE}>
+      <QrFlowNav current="contact" />
       <QrPageHeader title="Contact owner" subtitle="Choose how to reach them securely. Your number stays private." badge="Active" />
 
       {/* Asset hero — light card + dark text for reliable contrast */}
@@ -990,15 +1078,18 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
 
       {/* Reason */}
       <div className="mb-6">
-        <h3 className="mb-3 text-sm font-bold text-slate-900">What&apos;s the reason?</h3>
+        <h3 className="mb-1 text-sm font-bold text-slate-900">What&apos;s the reason?</h3>
+        <p className="mb-3 text-xs text-slate-500">
+          {isVehicle ? "Vehicle-related reasons" : isPetQrCategory(display.category) ? "Pet-related reasons" : "Choose the best match"}
+        </p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Contact reason">
-          {REASONS.map((r) => {
-            const selected = selectedReason === r;
+          {contactReasons.map((r) => {
+            const selected = selectedReason === r.value;
             return (
               <button
-                key={r}
+                key={`${r.value}-${r.label}`}
                 type="button"
-                onClick={() => setSelectedReason(r)}
+                onClick={() => setSelectedReason(r.value)}
                 aria-pressed={selected}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
                   selected
@@ -1006,7 +1097,7 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                {r}
+                {r.label}
               </button>
             );
           })}
@@ -1069,74 +1160,293 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
 }
 
 interface VerifyNumberViewProps {
+  uniqueId: string;
   setView: React.Dispatch<React.SetStateAction<ContactView>>;
   assetLabel?: string;
   mode?: "call" | "sms";
-  reason?: string;
+  reason: string;
+  reasonLabel: string;
 }
 
-function VerifyNumberView({ setView, assetLabel, mode = "call", reason }: VerifyNumberViewProps) {
+function VerifyNumberView({
+  uniqueId,
+  setView,
+  assetLabel,
+  mode = "call",
+  reason,
+  reasonLabel,
+}: VerifyNumberViewProps) {
+  const [step, setStep] = useState<"phone" | "otp" | "ready">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [callData, setCallData] = useState<{ did: string; connectionId: string } | null>(null);
+
   const title = mode === "sms" ? "Verify for SMS" : "Verify for call";
   const Icon = mode === "sms" ? MessageCircle : Phone;
 
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const deallocateMaskedCall = useCallback(async (connectionId: string) => {
+    if (!connectionId) return;
+    try {
+      await fetch(`/api/public/qr/${uniqueId}/masked-call`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId }),
+        keepalive: true,
+      });
+    } catch {
+      // best effort
+    } finally {
+      setCallData(null);
+    }
+  }, [uniqueId]);
+
+  useEffect(() => {
+    const sendBeacon = () => {
+      if (!callData?.connectionId || typeof navigator === "undefined" || !navigator.sendBeacon) return;
+      const body = JSON.stringify({ action: "deallocate", connectionId: callData.connectionId });
+      navigator.sendBeacon(`/api/public/qr/${uniqueId}/masked-call`, new Blob([body], { type: "application/json" }));
+    };
+    window.addEventListener("beforeunload", sendBeacon);
+    return () => window.removeEventListener("beforeunload", sendBeacon);
+  }, [callData?.connectionId, uniqueId]);
+
+  const requestOtp = async () => {
+    setError("");
+    setSuccess("");
+    if (!/^\d{8,15}$/.test(phone)) {
+      setError("Enter a valid mobile number (8–15 digits).");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const endpoint = mode === "call" ? "masked-call" : "contact";
+      const res = await fetch(`/api/public/qr/${uniqueId}/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          mode === "call"
+            ? { callerNumber: phone, requestOtp: true }
+            : { contactPhone: phone, requestOtp: true },
+        ),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        if (typeof json.cooldown === "number") setCooldown(Number(json.cooldown));
+        setError(json.message || "Failed to send OTP");
+        return;
+      }
+      setStep("otp");
+      setSuccess(json.message || "OTP sent to your phone.");
+      if (json.otp) setSuccess(`OTP sent (dev): ${json.otp}`);
+      setCooldown(30);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyAndContinue = async () => {
+    setError("");
+    setSuccess("");
+    if (!/^\d{4,8}$/.test(otp)) {
+      setError("Enter the OTP sent to your phone.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (mode === "call") {
+        const res = await fetch(`/api/public/qr/${uniqueId}/masked-call`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ callerNumber: phone, otp, reason }),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          setError(json.message || "Verification or call setup failed");
+          return;
+        }
+        const did = String(json.did || "").trim();
+        const connectionId = String(json.connectionId || "").trim();
+        if (did && connectionId) {
+          setCallData({ did, connectionId });
+          setStep("ready");
+          setSuccess("Masked number ready. Tap below to call the owner.");
+          if (typeof window !== "undefined") {
+            try {
+              const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+              if (isTouch) window.location.href = `tel:${did}`;
+            } catch {
+              // ignore
+            }
+          }
+        } else {
+          setError(json.message || "Could not allocate masked number");
+        }
+      } else {
+        const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contactPhone: phone, otp, reason }),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          setError(json.message || "Verification failed");
+          return;
+        }
+        setStep("ready");
+        setSuccess(json.message || "Owner has been notified securely.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className={PAGE}>
+      <QrFlowNav current="verify" verifyLabel={mode === "sms" ? "Verify SMS" : "Verify call"} />
       <QrPageHeader
-        title={title}
+        title={step === "ready" ? (mode === "call" ? "Call ready" : "Message sent") : title}
         subtitle={
           assetLabel
-            ? `Quick verification before contacting ${assetLabel}.`
+            ? `Verify your number before contacting ${assetLabel}.`
             : "We verify your number once to prevent misuse."
         }
-        onBack={() => setView("contact")}
+        onBack={() => {
+          if (callData?.connectionId) void deallocateMaskedCall(callData.connectionId);
+          setView("contact");
+        }}
         badge="Step 2"
       />
 
-      {reason && (
+      {reasonLabel && (
         <div className="mb-5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-          <span className="font-semibold text-slate-800">Reason:</span> {reason}
+          <span className="font-semibold text-slate-800">Reason:</span> {reasonLabel}
         </div>
       )}
 
-      <div className={`${CARD} ${CARD_PAD} mb-6 text-center`}>
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
-          <Icon className="h-8 w-8 text-blue-600" />
-        </div>
-        <p className="text-sm text-slate-600">One-time verification keeps owners safe from spam.</p>
-      </div>
-
-      <form className="space-y-5">
-        <div>
-          <label className={LABEL}>Your mobile number</label>
-          <PhoneInput value={phone} onChange={setPhone} required />
-        </div>
-        <div>
-          <label className={LABEL}>Enter OTP</label>
-          <input
-            className={INPUT}
-            placeholder="6-digit code"
-            inputMode="numeric"
-            maxLength={6}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          />
-          <div className="mt-2 text-right">
-            <button type="button" className="text-xs font-bold text-blue-600 hover:text-blue-700">
-              Resend OTP
-            </button>
+      {step !== "ready" && (
+        <div className={`${CARD} ${CARD_PAD} mb-6 text-center`}>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+            <Icon className="h-8 w-8 text-blue-600" />
           </div>
+          <p className="text-sm text-slate-600">
+            {step === "phone"
+              ? "Enter your mobile number and we will send a one-time code."
+              : "Enter the OTP we sent to your phone."}
+          </p>
         </div>
+      )}
 
-        <button type="button" className={BTN_PRIMARY}>
-          <ShieldCheck className="h-4 w-4" />
-          Verify & continue
-        </button>
-        <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
-          Cancel
-        </button>
-      </form>
+      {error && <div className="mb-4"><AlertBanner tone="error">{error}</AlertBanner></div>}
+      {success && <div className="mb-4"><AlertBanner tone="success">{success}</AlertBanner></div>}
+
+      {step === "phone" && (
+        <div className="space-y-5">
+          <div>
+            <label className={LABEL}>Your mobile number</label>
+            <PhoneInput value={phone} onChange={setPhone} required />
+          </div>
+          <button type="button" onClick={requestOtp} disabled={busy || cooldown > 0} className={BTN_PRIMARY}>
+            <Send className="h-4 w-4" />
+            {busy ? "Sending OTP…" : cooldown > 0 ? `Resend in ${cooldown}s` : "Send OTP"}
+          </button>
+          <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {step === "otp" && (
+        <div className="space-y-5">
+          <AlertBanner tone="info">
+            Code sent to <span className="font-bold">+91 {phone}</span>.
+            <button type="button" onClick={() => setStep("phone")} className="ml-1 font-bold underline">
+              Change number
+            </button>
+          </AlertBanner>
+          <div>
+            <label className={LABEL}>Enter OTP</label>
+            <input
+              className={INPUT}
+              placeholder="6-digit code"
+              inputMode="numeric"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              autoFocus
+            />
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={requestOtp}
+                disabled={busy || cooldown > 0}
+                className="text-xs font-bold text-blue-600 disabled:text-slate-400"
+              >
+                {cooldown > 0 ? `Resend OTP (${String(cooldown).padStart(2, "0")}s)` : "Resend OTP"}
+              </button>
+            </div>
+          </div>
+          <button type="button" onClick={verifyAndContinue} disabled={busy} className={BTN_PRIMARY}>
+            <ShieldCheck className="h-4 w-4" />
+            {busy
+              ? mode === "call"
+                ? "Verifying…"
+                : "Sending…"
+              : mode === "call"
+                ? "Verify OTP & get call number"
+                : "Verify OTP & notify owner"}
+          </button>
+          <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {step === "ready" && mode === "call" && callData && (
+        <div className={`${CARD} ${CARD_PAD} space-y-4`}>
+          <p className="text-sm font-medium text-slate-700">Dial this masked number to reach the owner:</p>
+          <p className="font-mono text-2xl font-bold text-slate-900">{callData.did}</p>
+          <a href={`tel:${callData.did}`} className={BTN_PRIMARY}>
+            <Phone className="h-4 w-4" />
+            Call now
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              void deallocateMaskedCall(callData.connectionId);
+              setStep("phone");
+              setOtp("");
+              setSuccess("");
+            }}
+            className={BTN_SECONDARY}
+          >
+            Done
+          </button>
+        </div>
+      )}
+
+      {step === "ready" && mode === "sms" && (
+        <div className="space-y-4">
+          <button type="button" onClick={() => setView("contact")} className={BTN_PRIMARY}>
+            Back to contact
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         <PrivacyNote>We never share your number with the owner.</PrivacyNote>
@@ -1149,18 +1459,35 @@ interface ReportEmergencyViewProps {
   setView: React.Dispatch<React.SetStateAction<ContactView>>;
   uniqueId: string;
   assetLabel?: string;
+  category: string;
 }
 
-function ReportEmergencyView({ setView, uniqueId, assetLabel }: ReportEmergencyViewProps) {
-  const issues = [
+function getEmergencyIssues(category: string) {
+  if (isPetQrCategory(category)) {
+    return [
+      { id: "found", label: "Found pet" },
+      { id: "lost", label: "Lost / escaped" },
+      { id: "injured", label: "Injured pet" },
+      { id: "other", label: "Other urgent" },
+    ];
+  }
+  return [
     { id: "accident", label: "Accident" },
-    { id: "damage", label: "Vehicle Damage" },
-    { id: "blocking", label: "Blocking Access" },
+    { id: "damage", label: "Vehicle damage" },
+    { id: "blocking", label: "Blocking access" },
     { id: "other", label: "Other" },
   ];
+}
+
+function ReportEmergencyView({ setView, uniqueId, assetLabel, category }: ReportEmergencyViewProps) {
+  const issues = useMemo(() => getEmergencyIssues(category), [category]);
 
   const [step, setStep] = useState<"form" | "verify">("form");
-  const [selectedIssue, setSelectedIssue] = useState("accident");
+  const [selectedIssue, setSelectedIssue] = useState(issues[0]?.id ?? "other");
+
+  useEffect(() => {
+    setSelectedIssue(issues[0]?.id ?? "other");
+  }, [issues]);
   const [useLocation, setUseLocation] = useState(true);
   const [coords, setCoords] = useState<{ lat: string | null; lng: string | null }>({ lat: null, lng: null });
 
@@ -1271,6 +1598,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel }: ReportEmergencyV
 
   return (
     <div className={PAGE}>
+      <QrFlowNav current="emergency" />
       <QrPageHeader
         title={step === "verify" ? "Confirm emergency" : "Report emergency"}
         subtitle={
