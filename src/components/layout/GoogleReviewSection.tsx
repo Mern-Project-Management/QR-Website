@@ -14,7 +14,13 @@ interface GoogleReviewItem {
   sort_order?: number;
 }
 
-const fallbackReviews: Required<Pick<GoogleReviewItem, "name" | "review" | "rating">>[] = [
+type DisplayReview = {
+  name: string;
+  review: string;
+  rating: number;
+};
+
+const fallbackReviews: DisplayReview[] = [
   {
     name: "Rahul Sharma",
     review:
@@ -34,6 +40,47 @@ const fallbackReviews: Required<Pick<GoogleReviewItem, "name" | "review" | "rati
     rating: 5,
   },
 ];
+
+function ReviewCard({ item }: { item: DisplayReview }) {
+  return (
+    <div className="h-full min-h-[220px] rounded-xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
+      <div className="mb-3 flex items-center gap-1 text-brand-primary">
+        {Array.from({ length: item.rating }).map((_, starIndex) => (
+          <Star key={starIndex} size={16} fill="currentColor" />
+        ))}
+      </div>
+      <p className="line-clamp-5 text-gray-700 dark:text-gray-200 leading-7">{item.review}</p>
+      <p className="mt-4 font-semibold text-gray-900 dark:text-white">{item.name}</p>
+    </div>
+  );
+}
+
+function AverageStars({ value, size = 20 }: { value: number; size?: number }) {
+  return (
+    <div className="flex items-center gap-0.5" aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, index) => {
+        const starValue = index + 1;
+        const filled = value >= starValue - 0.25;
+        const half = !filled && value >= starValue - 0.75;
+
+        return (
+          <Star
+            key={index}
+            size={size}
+            className={
+              filled
+                ? "fill-brand-primary text-brand-primary"
+                : half
+                  ? "fill-brand-primary/40 text-brand-primary"
+                  : "text-gray-300 dark:text-gray-600"
+            }
+            fill={filled ? "currentColor" : "none"}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export default function GoogleReviewSection() {
   const [reviews, setReviews] = useState<GoogleReviewItem[]>([]);
@@ -122,7 +169,7 @@ export default function GoogleReviewSection() {
     }
   };
 
-  const displayReviews = useMemo(() => {
+  const displayReviews = useMemo((): DisplayReview[] => {
     if (!reviews.length) return fallbackReviews;
     return reviews.map((item) => ({
       name: item.name?.trim() || "Verified Customer",
@@ -131,13 +178,29 @@ export default function GoogleReviewSection() {
     }));
   }, [reviews]);
 
+  const { averageRating, averageLabel, reviewCount } = useMemo(() => {
+    if (!displayReviews.length) {
+      return { averageRating: 5, averageLabel: "5.0", reviewCount: 0 };
+    }
+    const total = displayReviews.reduce((sum, item) => sum + item.rating, 0);
+    const avg = total / displayReviews.length;
+    return {
+      averageRating: avg,
+      averageLabel: avg.toFixed(1),
+      reviewCount: displayReviews.length,
+    };
+  }, [displayReviews]);
+
+  const sliderItems = loading ? fallbackReviews : displayReviews;
+  const enableLoop = sliderItems.length > 3;
+
   return (
     <section className="bg-white py-12 dark:bg-gray-900 lg:py-16">
       <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
         <div className="mb-10 flex flex-col items-center text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-brand-secondary px-4 py-2 text-sm font-medium text-brand-primary bg-white dark:bg-gray-800">
             <Star size={14} fill="currentColor" />
-            Google Reviews
+             Reviews
           </span>
           <h2 className="mt-4 text-3xl md:text-4xl font-semibold text-gray-900 dark:text-white">
             Loved by our customers
@@ -146,69 +209,55 @@ export default function GoogleReviewSection() {
             Real feedback from users who trust our QR safety solutions for vehicles, pets, and valuables.
           </p>
 
-          <div className="mt-5 flex items-center gap-2 text-brand-primary">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Star key={index} size={18} fill="currentColor" />
-              ))}
+          <div
+            className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:gap-3"
+            aria-label={`Average rating ${averageLabel} out of 5 from ${reviewCount} reviews`}
+          >
+            <AverageStars value={averageRating} size={22} />
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center sm:text-left">
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">{averageLabel}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">out of 5</span>
+              <span className="hidden text-gray-400 sm:inline">·</span>
+              {/* <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+              </span> */}
             </div>
           </div>
         </div>
 
-        {(() => {
-          const items = loading ? fallbackReviews : displayReviews;
-
-          const Card = ({ item }: { item: { name: string; review: string; rating: number } }) => (
-            <div className="h-full rounded-xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-center gap-1 text-brand-primary mb-3">
-                {Array.from({ length: item.rating }).map((_, starIndex) => (
-                  <Star key={starIndex} size={16} fill="currentColor" />
-                ))}
-              </div>
-              <p className="text-gray-700 dark:text-gray-200 leading-7">{item.review}</p>
-              <p className="mt-4 font-semibold text-gray-900 dark:text-white">{item.name}</p>
-            </div>
-          );
-
-          return (
-            <>
-              {/* Mobile: horizontal slider */}
-              <div className="md:hidden">
-                <Splide
-                  aria-label="Google reviews"
-                  options={{
-                    type: items.length > 1 ? "loop" : "slide",
-                    perPage: 1,
-                    perMove: 1,
-                    gap: "1rem",
-                    arrows: false,
-                    pagination: true,
-                    autoplay: items.length > 1,
-                    interval: 4500,
-                    pauseOnHover: true,
-                    drag: true,
-                  }}
-                  className="google-reviews-slider"
-                >
-                  {items.map((item, index) => (
-                    <SplideSlide key={`m-${item.name}-${index}`}>
-                      <div className="h-full pb-8">
-                        <Card item={item} />
-                      </div>
-                    </SplideSlide>
-                  ))}
-                </Splide>
-              </div>
-
-              {/* Tablet & desktop: grid */}
-              <div className="hidden md:grid md:grid-cols-3 gap-6">
-                {items.map((item, index) => (
-                  <Card key={`d-${item.name}-${index}`} item={item} />
-                ))}
-              </div>
-            </>
-          );
-        })()}
+        <Splide
+          aria-label="Customer reviews carousel"
+          options={{
+            type: enableLoop ? "loop" : "slide",
+            perPage: 1,
+            perMove: 1,
+            gap: "1.25rem",
+            arrows: sliderItems.length > 1,
+            pagination: sliderItems.length > 1,
+            autoplay: sliderItems.length > 1,
+            interval: 5000,
+            pauseOnHover: true,
+            pauseOnFocus: true,
+            drag: true,
+            breakpoints: {
+              640: {
+                perPage: Math.min(2, sliderItems.length),
+                gap: "1.5rem",
+              },
+              1024: {
+                perPage: Math.min(3, sliderItems.length),
+                gap: "1.75rem",
+              },
+            },
+          }}
+          className="google-reviews-slider slider-arrows-outside slider-arrows-white slider-dots-round splide-pagination-bottom pb-10"
+        >
+          {sliderItems.map((item, index) => (
+            <SplideSlide key={`review-${item.name}-${index}`}>
+              <ReviewCard item={item} />
+            </SplideSlide>
+          ))}
+        </Splide>
 
         <div className="mt-12 flex justify-center">
           <button

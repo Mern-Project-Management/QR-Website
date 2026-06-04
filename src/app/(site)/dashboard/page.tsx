@@ -22,8 +22,11 @@ import {
   Clock,
   Trash2,
 } from "react-feather";
+import Image from "next/image";
 import { QrCode, Car, Scan } from "lucide-react";
 import { createPortal } from "react-dom";
+
+const ADMIN_ORIGIN = "https://admin.odokho.com";
 
 // Types
 interface EmergencyContact {
@@ -76,6 +79,14 @@ interface MyQRsResponse {
   count: number;
 }
 
+interface CategoryItem {
+  id: string;
+  image: string | null;
+  title: string;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
 interface DndResponse {
   success: boolean;
   data: {
@@ -101,26 +112,96 @@ const formatDate = (iso?: string | null) => {
   });
 };
 
-const getCategoryIcon = (category: string) => {
-  switch (category.toLowerCase()) {
-    case "vehicle":
-      return <Car size={20} />;
-    case "pet":
-      return <User size={20} />;
-    default:
-      return <QrCode size={20} />;
+const isVehicleQrCategory = (cat: string) => /vehicle|car|bike|motor/i.test(cat);
+const isPetQrCategory = (cat: string) => /pet|dog|cat/i.test(cat);
+
+const findCategoryForQr = (category: string, categories: CategoryItem[]): CategoryItem | undefined => {
+  if (!category?.trim() || !categories.length) return undefined;
+
+  const q = category.trim().toLowerCase();
+  const exact = categories.find((c) => c.title.trim().toLowerCase() === q);
+  if (exact) return exact;
+
+  const partial = categories.find(
+    (c) =>
+      c.title.trim().toLowerCase().includes(q) ||
+      q.includes(c.title.trim().toLowerCase()),
+  );
+  if (partial) return partial;
+
+  if (isVehicleQrCategory(category)) {
+    return categories.find((c) => isVehicleQrCategory(c.title));
   }
+  if (isPetQrCategory(category)) {
+    return categories.find((c) => isPetQrCategory(c.title));
+  }
+
+  return undefined;
 };
 
-const getCategoryColor = (category: string) => {
-  switch (category.toLowerCase()) {
-    case "vehicle":
-      return "bg-blue-50 text-blue-700 border-blue-200";
-    case "pet":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    default:
-      return "bg-gray-50 text-gray-700 border-gray-200";
+const getCategoryIconFallback = (category: string, iconSize = 20) => {
+  if (isVehicleQrCategory(category)) return <Car size={iconSize} />;
+  if (isPetQrCategory(category)) return <User size={iconSize} />;
+  return <QrCode size={iconSize} />;
+};
+
+const getCategoryImageUrl = (imagePath: string | null | undefined): string | null => {
+  if (!imagePath?.trim()) return null;
+  const path = imagePath.trim();
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${ADMIN_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+function CategoryIcon({
+  category,
+  categories,
+  size = "md",
+  className = "",
+}: {
+  category: string;
+  categories: CategoryItem[];
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const matched = findCategoryForQr(category, categories);
+  const isSmall = size === "sm";
+  const boxClass = isSmall
+    ? "h-14 w-14 shrink-0 rounded-2xl"
+    : "h-[4.5rem] w-[4.5rem] shrink-0 rounded-2xl sm:h-20 sm:w-20";
+  const iconSize = isSmall ? 24 : 28;
+  const imageSizes = isSmall ? "56px" : "80px";
+
+  const imageUrl = getCategoryImageUrl(matched?.image);
+  if (imageUrl) {
+    return (
+      <div
+        className={`relative ${boxClass} overflow-hidden border border-gray-100 bg-gray-50 shadow-inner ${className}`}
+      >
+        <Image
+          src={imageUrl}
+          alt={matched?.title || category}
+          fill
+          sizes={imageSizes}
+          className="object-contain p-2"
+          unoptimized
+        />
+      </div>
+    );
   }
+
+  return (
+    <div
+      className={`${boxClass} flex items-center justify-center shadow-inner ${getCategoryColor(category)} ${className}`}
+    >
+      {getCategoryIconFallback(category, iconSize)}
+    </div>
+  );
+}
+
+const getCategoryColor = (category: string) => {
+  if (isVehicleQrCategory(category)) return "bg-blue-50 text-blue-700 border-blue-200";
+  if (isPetQrCategory(category)) return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-gray-50 text-gray-700 border-gray-200";
 };
 
 const getStatusStyles = (status?: string | null, isActive?: boolean) => {
@@ -185,6 +266,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [mounted, setMounted] = useState(false);
 
   // Modals state
@@ -209,6 +291,29 @@ export default function DashboardPage() {
   const [togglingDnd, setTogglingDnd] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/backend/categories");
+        if (!res.ok) return;
+        const data = await res.json();
+        const active = Array.isArray(data)
+          ? (data as CategoryItem[])
+              .filter((cat) => cat.is_active !== false && cat.image)
+              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          : [];
+        if (!cancelled) setCategories(active);
+      } catch (e) {
+        console.error("Error fetching categories:", e);
+      }
+    };
+    fetchCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -556,13 +661,7 @@ export default function DashboardPage() {
                 <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${getCategoryColor(
-                          qr.category
-                        )}`}
-                      >
-                        {getCategoryIcon(qr.category)}
-                      </div>
+                      <CategoryIcon category={qr.category} categories={categories} size="md" />
                       <div>
                         <h3 className="text-base font-extrabold text-gray-900">{qr.assetName}</h3>
                         <p className="text-xs text-gray-400 mt-1 font-semibold">ID: {qr.uniqueId}</p>
@@ -702,6 +801,7 @@ export default function DashboardPage() {
       {mounted && selectedQR && isContactModalOpen && (
         <ContactDetailsModal
           qr={selectedQR}
+          categories={categories}
           onClose={() => setIsContactModalOpen(false)}
           onEdit={() => {
             setIsContactModalOpen(false);
@@ -763,10 +863,12 @@ export default function DashboardPage() {
 // Contact Details Modal Component
 function ContactDetailsModal({
   qr,
+  categories,
   onClose,
   onEdit,
 }: {
   qr: QRCodeData;
+  categories: CategoryItem[];
   onClose: () => void;
   onEdit: () => void;
 }) {
@@ -801,9 +903,7 @@ function ContactDetailsModal({
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden my-8">
           <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getCategoryColor(qr.category)}`}>
-                {getCategoryIcon(qr.category)}
-              </div>
+              <CategoryIcon category={qr.category} categories={categories} size="sm" />
               <div>
                 <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Contact Details</p>
                 <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
@@ -865,7 +965,7 @@ function ContactDetailsModal({
             </div>
 
             {/* Vehicle Info (if applicable) */}
-            {qr.category.toLowerCase() === "vehicle" && (
+            {isVehicleQrCategory(qr.category) && (
               <div className="bg-blue-50 rounded-2xl border border-blue-100 p-5 mb-5">
                 <h4 className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Car size={16} /> Vehicle Information
@@ -924,7 +1024,7 @@ function ContactDetailsModal({
             )}
 
             {/* Pet Info (if applicable) */}
-            {qr.category.toLowerCase() === "pet" && (
+            {isPetQrCategory(qr.category) && (
               <div className="bg-amber-50 rounded-2xl border border-amber-100 p-5 mb-5">
                 <h4 className="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-4">Pet Information</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -1085,7 +1185,7 @@ function EditContactModal({
             </div>
 
             {/* Vehicle Info */}
-            {qr.category.toLowerCase() === "vehicle" && (
+            {isVehicleQrCategory(qr.category) && (
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Car size={16} /> Vehicle Information
@@ -1168,7 +1268,7 @@ function EditContactModal({
             )}
 
             {/* Pet Info */}
-            {qr.category.toLowerCase() === "pet" && (
+            {isPetQrCategory(qr.category) && (
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-4">Pet Information</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

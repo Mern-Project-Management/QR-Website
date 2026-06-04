@@ -1,12 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Percent, FileText, Headphones, Truck, PhoneCall } from "react-feather";
 import Button from "@/components/ui/Button";
 import PageTitle from "@/components/ui/PageTitle";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-const benefits = ["Special bulk pricing", "Free priority shipping", "Dedicated account manager"];
+interface BulkPurchaseFaq {
+  id: number;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}
+
+const benefits = ["Special bulk pricing", "Priority Logistics ", "Dedicated Support"];
 
 const highlights = [
   {
@@ -21,8 +29,8 @@ const highlights = [
   },
   {
     icon: Headphones,
-    title: "Dedicated Support",
-    description: "Priority support line with a dedicated point of contact for faster coordination.",
+    title: "Custom Branding",
+    description: "Custom branding options for business orders.",
   },
   {
     icon: Truck,
@@ -31,7 +39,7 @@ const highlights = [
   },
 ];
 
-const faqs = [
+const fallbackFaqs: Pick<BulkPurchaseFaq, "question" | "answer">[] = [
   {
     question: "What is the minimum order quantity for bulk purchase?",
     answer:
@@ -55,13 +63,51 @@ const faqs = [
 ];
 
 export default function BulkPurchasePage() {
+  const [faqs, setFaqs] = useState<Pick<BulkPurchaseFaq, "question" | "answer">[]>([]);
+  const [faqsLoading, setFaqsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const response = await fetch("/api/public/bulk-purchase/faqs");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const json = (await response.json()) as {
+          success?: boolean;
+          data?: BulkPurchaseFaq[];
+        };
+
+        const items = Array.isArray(json.data)
+          ? json.data
+              .filter((item) => item.question?.trim() && item.answer?.trim())
+              .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+              .map((item) => ({
+                question: item.question.trim(),
+                answer: item.answer.trim(),
+              }))
+          : [];
+
+        setFaqs(items);
+      } catch (error) {
+        console.error("Error fetching bulk purchase FAQs:", error);
+        setFaqs([]);
+      } finally {
+        setFaqsLoading(false);
+      }
+    };
+
+    fetchFaqs();
+  }, []);
+
+  const displayFaqs = faqs.length > 0 ? faqs : fallbackFaqs;
+
   return (
     <>
       <div className="pt-24 pb-10 max-w-screen mx-auto font-dm">
-        <PageTitle title="Bulk Purchase" subtitle="Special pricing for teams and businesses">
-          <div className="flex justify-center text-center">
-            <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Bulk Purchase" }]} variant="light" />
-          </div>
+        <PageTitle title="Bulk Purchase" subtitle="Special pricing for socities , teams and businesses">
+          
         </PageTitle>
       </div>
 
@@ -77,7 +123,7 @@ export default function BulkPurchasePage() {
                 Bulk Purchase for Everyone
               </h1>
               <p className="text-gray-600 text-lg mt-4 max-w-xl">
-                Unlock special pricing for communities, corporate gifting, institutions, and reseller networks with
+                Unlock special pricing for societies, corporate gifting, institutions, Businesses and reseller networks with
                 dedicated support at every step.
               </p>
 
@@ -91,14 +137,14 @@ export default function BulkPurchasePage() {
               </ul>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button href="/contact" label="Get a Quote" bgColor="bg-brand-primary" textColor="text-white" />
+                <Button href="/contact" label="Contact Us" bgColor="bg-brand-primary" textColor="text-white" />
                 <Button href="/shop" label="Explore Products" bgColor="bg-brand-secondary" textColor="text-white" />
               </div>
             </div>
 
             <div className="rounded-2xl bg-home-one-gradient-banner border border-gray-200 p-6 md:p-8 flex flex-col justify-between">
               <div>
-                <h3 className="text-2xl font-semibold text-gray-900">Why teams choose our bulk program</h3>
+                <h3 className="text-2xl font-semibold text-gray-900">Why Clients choose our bulk program</h3>
                 <p className="text-gray-700 mt-3">
                   Designed for procurement teams, event planners, resellers, and enterprise buyers who need reliable
                   delivery and predictable pricing.
@@ -106,20 +152,18 @@ export default function BulkPurchasePage() {
               </div>
               <div className="grid grid-cols-2 gap-4 mt-8">
                 <div className="rounded-xl bg-white p-4 border border-gray-200">
-                  <p className="text-3xl font-semibold text-brand-primary">30%</p>
-                  <p className="text-sm text-gray-600 mt-1">Max tiered discount</p>
+                  
+                  <p className="text-sm font-semibold text-brand-primary">Volume Pricing</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 border border-gray-200">
-                  <p className="text-3xl font-semibold text-brand-primary">3-5 Days</p>
-                  <p className="text-sm text-gray-600 mt-1">Expected delivery</p>
+                  
+                  <p className="text-sm font-semibold text-brand-primary">Fast Delivery</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 border border-gray-200">
-                  <p className="text-3xl font-semibold text-brand-primary">GST</p>
-                  <p className="text-sm text-gray-600 mt-1">Compliant invoices</p>
+                  <p className="text-sm font-semibold text-brand-primary">GST Compliant</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 border border-gray-200">
-                  <p className="text-3xl font-semibold text-brand-primary">1:1</p>
-                  <p className="text-sm text-gray-600 mt-1">Account manager</p>
+                  <p className="text-sm font-semibold text-brand-primary">Dedicated Support</p>
                 </div>
               </div>
             </div>
@@ -161,7 +205,7 @@ export default function BulkPurchasePage() {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button href="/contact" label="Contact Us" bgColor="bg-white" textColor="text-brand-primary" />
-                <Button href="/contact" label="Get a Quote" bgColor="bg-brand-secondary" textColor="text-white" />
+
               </div>
             </div>
 
@@ -193,21 +237,31 @@ export default function BulkPurchasePage() {
           </p>
 
           <div className="mt-8 space-y-4 max-w-4xl mx-auto">
-            {faqs.map((item, index) => (
-              <details
-                key={item.question}
-                className="group rounded-xl border border-gray-200 bg-white p-5"
-                open={index === 0}
-              >
-                <summary className="cursor-pointer list-none text-lg font-semibold text-gray-900 flex items-center justify-between">
-                  {item.question}
-                  <span className="ml-3 text-brand-primary group-open:rotate-45 transition-transform text-2xl leading-none">
-                    +
-                  </span>
-                </summary>
-                <p className="text-gray-600 mt-3 leading-7">{item.answer}</p>
-              </details>
-            ))}
+            {faqsLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+                  <Skeleton className="h-6 w-3/4" rounded="md" />
+                  <Skeleton className="h-4 w-full" rounded="md" />
+                  <Skeleton className="h-4 w-5/6" rounded="md" />
+                </div>
+              ))
+            ) : (
+              displayFaqs.map((item, index) => (
+                <details
+                  key={`${item.question}-${index}`}
+                  className="group rounded-xl border border-gray-200 bg-white p-5"
+                  open={index === 0}
+                >
+                  <summary className="cursor-pointer list-none text-lg font-semibold text-gray-900 flex items-center justify-between">
+                    {item.question}
+                    <span className="ml-3 text-brand-primary group-open:rotate-45 transition-transform text-2xl leading-none">
+                      +
+                    </span>
+                  </summary>
+                  <p className="text-gray-600 mt-3 leading-7">{item.answer}</p>
+                </details>
+              ))
+            )}
           </div>
         </div>
       </section>

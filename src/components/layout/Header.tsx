@@ -91,7 +91,7 @@ const Header = ({
 
     return (
         <header
-            className={`header-wrapper w-full min-w-0 border-b border-gray-200 ${position} left-0 right-0 z-[1000] transition-all duration-300 ease-in-out font-dm-sans ${headerClass === "bg-color-none" ? "bg-color-none top-0" : ""} ${theme} ${scrolled ? "scroll-header shadow-xs" : `${bgColor}`
+            className={`header-wrapper w-full min-w-0 border-b border-gray-200 ${position} left-0 right-0 z-[1000] transition-all duration-300 ease-in-out font-dm-sans ${headerClass === "bg-color-none" ? "bg-color-none" : ""} ${theme} ${scrolled ? "scroll-header shadow-xs" : `${bgColor}`
                 }`}
         >
             <div className="max-w-screen-xl mx-auto min-w-0 px-2 sm:px-3 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
