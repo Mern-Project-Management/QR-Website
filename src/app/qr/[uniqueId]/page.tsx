@@ -657,6 +657,7 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>(prefill?.email || "");
   const [address, setAddress] = useState<string>("");
+  const [customOwnerMessage, setCustomOwnerMessage] = useState("");
 
   // vehicle
   const [vehicleMake, setVehicleMake] = useState("");
@@ -727,6 +728,9 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
         if (petBreed.trim()) payload.petBreed = petBreed.trim();
         if (petNotes.trim()) payload.petNotes = petNotes.trim();
       }
+
+      const message = customOwnerMessage.trim();
+      if (message) payload.custom_owner_message = message;
 
       const res = await fetch(`/api/public/qr/${uniqueId}/activate`, {
         method: "POST",
@@ -845,6 +849,22 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
                 placeholder="House / street, city"
                 autoComplete="street-address"
               />
+            </div>
+            <div>
+              <label className={LABEL}>
+                Custom message for finders <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <textarea
+                rows={3}
+                maxLength={2000}
+                value={customOwnerMessage}
+                onChange={(e) => setCustomOwnerMessage(e.target.value)}
+                className={`${INPUT} resize-none`}
+                placeholder="e.g. Thanks for caring! Please let me know if there is an issue."
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                Shown to people who scan your QR after activation ({customOwnerMessage.length}/2000).
+              </p>
             </div>
           </div>
         </FormSection>
