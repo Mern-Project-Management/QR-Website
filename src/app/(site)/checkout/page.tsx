@@ -7,6 +7,13 @@ import { useCart } from "@/components/providers/CartProvider";
 import { ShippingAddress } from '@/types';
 import { MapPin, CreditCard, ShoppingBag, CheckCircle, Package, ChevronDown, Plus, Loader } from 'react-feather';
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import {
+  CartDiscountQuote,
+  AvailableDiscountOffer,
+  emptyCartDiscountQuote,
+  fetchCartDiscountQuote,
+  getLineDiscount,
+} from '@/lib/cartDiscounts';
 
 declare global {
   interface Window {
@@ -105,36 +112,86 @@ function clearCheckoutSessionId(): void {
   }
 }
 
-interface QuantityRule {
-  minQty: number;
-  type: 'percentage' | 'flat';
-  value: number;
-  maxDiscount?: number | string | null;
-}
-
-interface CouponRule {
-  code: string;
-  type: 'percentage' | 'flat';
-  value: number;
-}
-
-interface DiscountConfig {
-  quantityRules?: QuantityRule[];
-  coupon?: CouponRule;
-}
-
-interface EnrichedProduct {
-  id: number;
-  discountConfig?: DiscountConfig | null;
-}
-
-interface CheckoutProduct extends Omit<import("@/const/productData").Product, 'discountConfig'> {
-  discountConfig?: DiscountConfig | null;
-}
-
 interface CheckoutCartItem {
-  product: CheckoutProduct;
+  product: { id: number; title: string; price: number };
   quantity: number;
+}
+
+function formatOfferSavings(offer: AvailableDiscountOffer): string {
+  if (offer.estimatedDiscount > 0) {
+    return `Save ₹${offer.estimatedDiscount.toFixed(2).replace(/\.00$/, '')}`;
+  }
+  if (offer.discountType === 'fixed') {
+    return `₹${offer.value} off`;
+  }
+  return `${offer.value}% off`;
+}
+
+function OfferCard({
+  offer,
+  variant,
+  onApply,
+  applying,
+}: {
+  offer: AvailableDiscountOffer;
+  variant: 'auto' | 'coupon' | 'pending';
+  onApply?: () => void;
+  applying?: boolean;
+}) {
+  const isApplied = offer.isApplied;
+  const isPending = variant === 'pending';
+
+  return (
+    <div
+      className={`flex items-start justify-between gap-3 rounded-xl border px-3.5 py-3 ${
+        isApplied
+          ? 'border-emerald-200 bg-emerald-50/70'
+          : isPending
+            ? 'border-amber-100 bg-amber-50/40'
+            : 'border-blue-100 bg-blue-50/40'
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-bold text-gray-900">{offer.name}</p>
+          {offer.code ? (
+            <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-blue-900 border border-blue-100">
+              {offer.code}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-xs text-gray-600 leading-snug">{offer.description}</p>
+        {isPending && offer.unmetRequirements.length > 0 ? (
+          <p className="mt-1.5 text-[11px] font-semibold text-amber-700">
+            {offer.unmetRequirements.join(' · ')}
+          </p>
+        ) : null}
+        {!isPending && offer.estimatedDiscount > 0 ? (
+          <p className="mt-1.5 text-[11px] font-bold text-emerald-700">{formatOfferSavings(offer)}</p>
+        ) : null}
+      </div>
+      <div className="shrink-0">
+        {variant === 'coupon' && onApply ? (
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={applying}
+            className="rounded-lg bg-blue-900 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition hover:bg-blue-800 disabled:opacity-60"
+          >
+            {applying ? '…' : 'Apply'}
+          </button>
+        ) : isApplied ? (
+          <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+            Applied
+          </span>
+        ) : isPending ? (
+          <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+            Locked
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default function CheckoutPage() {
@@ -172,158 +229,147 @@ export default function CheckoutPage() {
 
   const isValidPhoneDigits = (digits: string) => digits.length >= 8 && digits.length <= 15;
 
-  const [enrichedProducts, setEnrichedProducts] = useState<EnrichedProduct[]>([]);
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [discountQuote, setDiscountQuote] = useState<CartDiscountQuote | null>(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
 
-  // Fetch products to enrich the cart with discountConfig
   useEffect(() => {
-    const fetchEnriched = async () => {
-      try {
-        const res = await fetch('/api/backend/products');
-        if (res.ok) {
-          const data = await res.json();
-          setEnrichedProducts(data);
-        }
-      } catch (err) {
-        console.error("Failed to load products for discounts:", err);
+    let cancelled = false;
+    const loadDiscounts = async () => {
+      if (!cart.length) {
+        setDiscountQuote(emptyCartDiscountQuote([]));
+        return;
+      }
+      setDiscountLoading(true);
+      const items = cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        price: Number(item.product.price),
+      }));
+      const quote = await fetchCartDiscountQuote(items, appliedCoupon);
+      if (!cancelled) {
+        setDiscountQuote(quote || emptyCartDiscountQuote(items));
+        setDiscountLoading(false);
       }
     };
-    fetchEnriched();
-  }, []);
-
-  const getCartItemDiscountDetails = useCallback((item: CheckoutCartItem) => {
-    const enriched = enrichedProducts.find(p => p.id === item.product.id);
-    const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
-    
-    const originalPrice = Number(item.product.price);
-    const qty = item.quantity;
-    const baseTotal = originalPrice * qty;
-    
-    let discountAmount = 0;
-    let ruleDescription = '';
-
-    // 1. Check for quantity rules first (automatic)
-    let quantityDiscount = 0;
-    if (discountConfig?.quantityRules && Array.isArray(discountConfig.quantityRules)) {
-      const rules = discountConfig.quantityRules
-        .filter((r: QuantityRule) => qty >= r.minQty)
-        .sort((a: QuantityRule, b: QuantityRule) => b.minQty - a.minQty); // best matching rule
-
-      if (rules.length > 0) {
-        const bestRule = rules[0];
-        let computed = 0;
-        if (bestRule.type === 'percentage') {
-          computed = (originalPrice * bestRule.value / 100) * qty;
-        } else {
-          computed = bestRule.value * qty;
-        }
-        
-        if (bestRule.maxDiscount !== undefined && bestRule.maxDiscount !== null && String(bestRule.maxDiscount) !== '') {
-          const cap = Number(bestRule.maxDiscount);
-          computed = Math.min(computed, cap);
-        }
-        
-        quantityDiscount = computed;
-        ruleDescription = `${bestRule.value}${bestRule.type === 'percentage' ? '%' : '₹'} Bulk Discount (Min Qty: ${bestRule.minQty})`;
-      }
-    }
-
-    // 2. Check for coupon rules
-    let couponDiscount = 0;
-    if (appliedCoupon && discountConfig?.coupon) {
-      const coupon = discountConfig.coupon;
-      if (coupon.code.trim().toUpperCase() === appliedCoupon.trim().toUpperCase()) {
-        if (coupon.type === 'percentage') {
-          couponDiscount = (originalPrice * coupon.value / 100) * qty;
-        } else {
-          couponDiscount = coupon.value * qty;
-        }
-        ruleDescription = `Coupon "${coupon.code}" applied (${coupon.value}${coupon.type === 'percentage' ? '%' : '₹'} off)`;
-      }
-    }
-
-    if (couponDiscount > 0 && quantityDiscount > 0) {
-      discountAmount = couponDiscount + quantityDiscount;
-      ruleDescription = `Bulk Discount + Coupon Applied! Saved ₹${discountAmount.toFixed(0)}`;
-    } else if (couponDiscount > 0) {
-      discountAmount = couponDiscount;
-    } else if (quantityDiscount > 0) {
-      discountAmount = quantityDiscount;
-    }
-
-    discountAmount = Math.min(discountAmount, baseTotal);
-
-    return {
-      baseTotal,
-      discountAmount,
-      finalTotal: baseTotal - discountAmount,
-      ruleDescription,
-      hasDiscount: discountAmount > 0,
-      appliedDiscountType: couponDiscount > 0 && quantityDiscount > 0 ? 'coupon' : (couponDiscount > 0 ? 'coupon' : (quantityDiscount > 0 ? 'quantity' : null))
+    void loadDiscounts();
+    return () => {
+      cancelled = true;
     };
-  }, [enrichedProducts, appliedCoupon]);
+  }, [cart, appliedCoupon]);
 
   const computedCartDetails = useMemo(() => {
-    let subtotal = 0;
-    let totalDiscount = 0;
-    const items = cart.map(item => {
-      const details = getCartItemDiscountDetails(item as CheckoutCartItem);
-      subtotal += details.baseTotal;
-      totalDiscount += details.discountAmount;
+    const fallbackItems = cart.map((item) => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      price: Number(item.product.price),
+    }));
+    const quote = discountQuote || emptyCartDiscountQuote(fallbackItems);
+    const items = cart.map((item) => {
+      const line = getLineDiscount(quote, item.product.id);
+      const baseTotal = line?.lineSubtotal ?? Number(item.product.price) * item.quantity;
+      const discountAmount = line?.discountAmount ?? 0;
+      const finalTotal = line?.finalLineTotal ?? baseTotal;
+      const ruleNames = quote.appliedRules
+        .filter((rule) => rule.productIds.includes(item.product.id))
+        .map((rule) => (rule.code ? `${rule.name} (${rule.code})` : rule.name));
       return {
         ...item,
-        details
+        details: {
+          baseTotal,
+          discountAmount,
+          finalTotal,
+          ruleDescription: ruleNames.join(', '),
+          hasDiscount: discountAmount > 0,
+        },
       };
     });
 
     return {
       items,
-      subtotal,
-      totalDiscount,
-      finalTotal: Math.max(0, subtotal - totalDiscount)
+      subtotal: quote.subtotal,
+      totalDiscount: quote.discountTotal,
+      finalTotal: quote.total,
     };
-  }, [cart, getCartItemDiscountDetails]);
+  }, [cart, discountQuote]);
 
   const cartItems = useMemo(() => {
-    return computedCartDetails.items.map(item => {
-      const finalItemPrice = item.details.finalTotal / item.quantity;
+    const quote = discountQuote;
+    return cart.map((item) => {
+      const line = quote ? getLineDiscount(quote, item.product.id) : undefined;
+      const finalItemPrice = line?.discountedUnitPrice ?? Number(item.product.price);
       return {
+        productId: item.product.id,
         name: item.product.title,
         sku: `SKU-${item.product.id}`,
         quantity: item.quantity,
-        price: Number(finalItemPrice.toFixed(2))
+        price: Number(finalItemPrice.toFixed(2)),
       };
     });
-  }, [computedCartDetails]);
+  }, [cart, discountQuote]);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async (codeOverride?: string) => {
     setCouponError(null);
-    const code = couponInput.trim().toUpperCase();
+    const code = (codeOverride ?? couponInput).trim().toUpperCase();
     if (!code) {
       setCouponError('Please enter a coupon code.');
       return;
     }
 
-    let foundCoupon = false;
-    for (const item of cart) {
-      const enriched = enrichedProducts.find(p => p.id === item.product.id);
-      const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
-      if (discountConfig?.coupon?.code?.trim()?.toUpperCase() === code) {
-        foundCoupon = true;
-        break;
-      }
+    const items = cart.map((item) => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      price: Number(item.product.price),
+    }));
+    const quote = await fetchCartDiscountQuote(items, code);
+    if (!quote) {
+      setCouponError('Could not validate coupon. Please try again.');
+      setAppliedCoupon(null);
+      return;
     }
 
-    if (foundCoupon) {
-      setAppliedCoupon(code);
-      setCouponError(null);
-    } else {
+    const matchedCodeRule = quote.appliedRules.some(
+      (rule) => rule.code?.trim().toUpperCase() === code
+    );
+    if (!matchedCodeRule) {
       setCouponError(`Coupon code "${code}" is invalid or not applicable to items in your cart.`);
       setAppliedCoupon(null);
+      return;
     }
+
+    setCouponInput(code);
+    setAppliedCoupon(code);
+    setDiscountQuote(quote);
+    setCouponError(null);
   };
+
+  const availableOffers = useMemo(
+    () => discountQuote?.availableOffers ?? [],
+    [discountQuote]
+  );
+
+  const applicableCouponOffers = useMemo(
+    () =>
+      availableOffers.filter(
+        (offer) => offer.requiresCoupon && offer.code && offer.isApplicable && !offer.isApplied
+      ),
+    [availableOffers]
+  );
+
+  const pendingCouponOffers = useMemo(
+    () =>
+      availableOffers.filter(
+        (offer) => offer.requiresCoupon && offer.code && !offer.isApplicable
+      ),
+    [availableOffers]
+  );
+
+  const autoOffers = useMemo(
+    () => availableOffers.filter((offer) => !offer.requiresCoupon),
+    [availableOffers]
+  );
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
@@ -684,6 +730,7 @@ export default function CheckoutPage() {
           address: normalizedAddress,
           paymentMethod: 'ONLINE',
           ...(checkoutSessionId ? { checkoutSessionId } : {}),
+          ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         };
 
         const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
@@ -850,6 +897,7 @@ export default function CheckoutPage() {
           items: cartItems,
           paymentMethod: method,
           address,
+          ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
       });
       const text = await res.text();
@@ -1319,8 +1367,6 @@ export default function CheckoutPage() {
                   {computedCartDetails.items.map((item, idx) => {
                     const originalUnit = Number(item.product.price);
                     const hasDiscount = item.details.hasDiscount;
-                    const enriched = enrichedProducts.find(p => p.id === item.product.id);
-                    const discountConfig = enriched?.discountConfig || item.product.discountConfig || null;
 
                     return (
                       <div key={idx} className="flex gap-4 items-start bg-white p-4 rounded-xl border border-gray-150 shadow-sm hover:shadow-md transition-all">
@@ -1339,44 +1385,11 @@ export default function CheckoutPage() {
                             )}
                           </div>
 
-                          {hasDiscount && (
+                          {hasDiscount && item.details.ruleDescription ? (
                             <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 leading-snug">
                               {item.details.ruleDescription}
                             </p>
-                          )}
-
-                          {!appliedCoupon && discountConfig?.coupon && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const code = discountConfig.coupon?.code;
-                                if (code) {
-                                  setCouponInput(code);
-                                  setAppliedCoupon(code);
-                                }
-                              }}
-                              className="text-[11px] text-blue-700 hover:text-blue-950 font-bold underline mt-1.5 text-left block transition-colors"
-                            >
-                              Use code &quot;{discountConfig.coupon.code}&quot; to save {discountConfig.coupon.value}{discountConfig.coupon.type === 'percentage' ? '%' : '₹'}!
-                            </button>
-                          )}
-
-                          {discountConfig?.quantityRules && Array.isArray(discountConfig.quantityRules) && discountConfig.quantityRules.length > 0 && (
-                            <div className="mt-2.5 p-2 rounded-lg bg-blue-50/30 border border-blue-100/50">
-                              <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-1">Bulk Buy Offers:</p>
-                              <div className="space-y-0.5">
-                                {discountConfig.quantityRules.map((rule: QuantityRule, idx2: number) => {
-                                  const isMet = item.quantity >= rule.minQty;
-                                  return (
-                                    <p key={idx2} className={`text-[10px] font-semibold flex items-center gap-1 ${isMet ? 'text-green-700' : 'text-gray-500'}`}>
-                                      <span className={`w-1 h-1 rounded-full ${isMet ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                      Buy {rule.minQty}+: Save {rule.value}{rule.type === 'percentage' ? '%' : '₹'}! {isMet && '(Active)'}
-                                    </p>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                         <div className="text-right flex-shrink-0">
                           {hasDiscount ? (
@@ -1396,6 +1409,36 @@ export default function CheckoutPage() {
                   })}
                 </div>
 
+                {/* Available coupons & offers */}
+                {(applicableCouponOffers.length > 0 || pendingCouponOffers.length > 0 || autoOffers.length > 0) && (
+                  <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm mb-4">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-3">
+                      Available offers
+                    </label>
+                    <div className="space-y-2.5">
+                      {autoOffers.map((offer) => (
+                        <OfferCard
+                          key={offer.ruleId}
+                          offer={offer}
+                          variant={offer.isApplicable ? 'auto' : 'pending'}
+                        />
+                      ))}
+                      {applicableCouponOffers.map((offer) => (
+                        <OfferCard
+                          key={offer.ruleId}
+                          offer={offer}
+                          variant="coupon"
+                          onApply={() => void handleApplyCoupon(offer.code || undefined)}
+                          applying={discountLoading}
+                        />
+                      ))}
+                      {pendingCouponOffers.map((offer) => (
+                        <OfferCard key={offer.ruleId} offer={offer} variant="pending" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Promo Code Coupon Input Box */}
                 <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm mb-6">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Have a promo code?</label>
@@ -1412,7 +1455,7 @@ export default function CheckoutPage() {
                     />
                     <button
                       type="button"
-                      onClick={handleApplyCoupon}
+                      onClick={() => void handleApplyCoupon()}
                       className="bg-blue-900 hover:bg-blue-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
                     >
                       Apply

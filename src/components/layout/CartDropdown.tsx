@@ -8,7 +8,7 @@ import { ShoppingCart, X, Plus, Minus, Trash2 } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 
 export default function CartDropdown() {
-    const { cart, addToCart, removeFromCart, cartTotal } = useCart();
+    const { cart, addToCart, removeFromCart, cartSubtotal, cartDiscount, cartTotal, discountLoading } = useCart();
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,9 +170,23 @@ export default function CartDropdown() {
                                 ))}
                             </div>
                             <div className="px-4 sm:px-4.5 py-3.5 sm:py-4 border-t border-gray-100 bg-gray-50/40 shrink-0">
+                                {cartDiscount > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                                            <span>Subtotal</span>
+                                            <span className="tabular-nums">₹{cartSubtotal.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm text-green-700 mb-1.5">
+                                            <span>Discount</span>
+                                            <span className="tabular-nums">−₹{cartDiscount.toFixed(2)}</span>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="flex justify-between items-center font-bold text-gray-900">
                                     <span className="text-sm">Total Amount</span>
-                                    <span className="text-base text-blue-900">₹{cartTotal}</span>
+                                    <span className="text-base text-blue-900 tabular-nums">
+                                        {discountLoading ? '…' : `₹${cartTotal.toFixed(2)}`}
+                                    </span>
                                 </div>
                                 <Link
                                     onClick={() => setIsOpen(false)}

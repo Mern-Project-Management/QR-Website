@@ -1,8 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { Product } from "@/const/productData";
+import {
+  CartDiscountQuote,
+  emptyCartDiscountQuote,
+  fetchCartDiscountQuote,
+} from "@/lib/cartDiscounts";
 
 export interface CartItem {
     product: Product;
@@ -14,7 +19,10 @@ interface CartContextType {
     addToCart: (product: Product, quantity?: number) => void;
     removeFromCart: (productId: number) => void;
     clearCart: () => void;
+    cartSubtotal: number;
+    cartDiscount: number;
     cartTotal: number;
+    discountLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -23,9 +31,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const { data: session, status } = useSession();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [isDbLoaded, setIsDbLoaded] = useState(false);
+    const [discountQuote, setDiscountQuote] = useState<CartDiscountQuote | null>(null);
+    const [discountLoading, setDiscountLoading] = useState(false);
     const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
 
-    // Initial load: Local storage
     useEffect(() => {
         const savedCart = localStorage.getItem("cart");
         if (savedCart) {
@@ -37,11 +46,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
-    // On logout, clear any persisted cart so the next user doesn't see it.
     useEffect(() => {
         if (status !== "unauthenticated") return;
         setCart([]);
         setIsDbLoaded(false);
+        setDiscountQuote(null);
         try {
             localStorage.removeItem("cart");
         } catch {
@@ -49,7 +58,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [status]);
 
-    // Load from DB if user is logged in
     useEffect(() => {
         if (status === 'authenticated' && session?.user && !isDbLoaded) {
             fetch(`/api/backend/carts`, {
@@ -81,9 +89,33 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [status, session, isDbLoaded, accessToken]);
 
-    // Save to local storage (always)
     useEffect(() => {
         localStorage.setItem("cart", JSON.stringify(cart));
+    }, [cart]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            if (!cart.length) {
+                setDiscountQuote(emptyCartDiscountQuote([]));
+                return;
+            }
+            setDiscountLoading(true);
+            const items = cart.map((item) => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+                price: Number(item.product.price),
+            }));
+            const quote = await fetchCartDiscountQuote(items);
+            if (!cancelled) {
+                setDiscountQuote(quote || emptyCartDiscountQuote(items));
+                setDiscountLoading(false);
+            }
+        }, 250);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [cart]);
 
     const addToCart = (product: Product, quantity: number = 1) => {
@@ -99,7 +131,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             return [...prev, { product, quantity }];
         });
 
-        // Sync to backend (best-effort) using jwt in body (as per backend contract).
         if (status === "authenticated" && accessToken) {
             fetch("/api/carts", {
                 method: "POST",
@@ -127,13 +158,31 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     const clearCart = () => setCart([]);
 
-    const cartTotal = cart.reduce(
-        (total, item) => total + Number(item.product.price) * item.quantity,
-        0
-    );
+    const totals = useMemo(() => {
+        const fallbackItems = cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: Number(item.product.price),
+        }));
+        const quote = discountQuote || emptyCartDiscountQuote(fallbackItems);
+        return {
+            cartSubtotal: quote.subtotal,
+            cartDiscount: quote.discountTotal,
+            cartTotal: quote.total,
+        };
+    }, [cart, discountQuote]);
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, cartTotal }}>
+        <CartContext.Provider value={{
+            cart,
+            addToCart,
+            removeFromCart,
+            clearCart,
+            cartSubtotal: totals.cartSubtotal,
+            cartDiscount: totals.cartDiscount,
+            cartTotal: totals.cartTotal,
+            discountLoading,
+        }}>
             {children}
         </CartContext.Provider>
     );
