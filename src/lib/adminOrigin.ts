@@ -2,6 +2,13 @@
 const DEFAULT_PRODUCTION_ADMIN_ORIGIN = "https://odokho.com";
 const DEFAULT_DEV_ADMIN_ORIGIN = "http://localhost:3060";
 
+/** Fixed origin for admin-hosted images (categories, QR assets, uploads). */
+export const ADMIN_IMAGE_ORIGIN = "https://admin.odokho.com";
+
+export function getAdminImageOrigin(): string {
+  return ADMIN_IMAGE_ORIGIN;
+}
+
 export function getAdminOrigin(): string {
   const explicit =
     process.env.ADMIN_ORIGIN?.replace(/\/$/, "") ||

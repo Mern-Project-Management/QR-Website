@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 interface BannerData {
     id: number;
@@ -12,6 +13,8 @@ interface BannerData {
 }
 
 export default function MaintenanceBanner() {
+    const pathname = usePathname();
+    const isQrRoute = pathname?.startsWith("/qr");
     const [bannerData, setBannerData] = useState<BannerData | null>(null);
     const [visible, setVisible] = useState(true);
     const bannerRef = useRef<HTMLDivElement | null>(null);
@@ -19,8 +22,10 @@ export default function MaintenanceBanner() {
     // Pause animation on hover for readability
     const [paused, setPaused] = useState(false);
 
-    // Fetch banner config from API
+    // Fetch banner config from API (not needed on QR scan pages)
     useEffect(() => {
+        if (isQrRoute) return;
+
         fetch("/api/backend/maintenance-banner")
             .then((res) => res.json())
             .then((json) => {
@@ -31,12 +36,12 @@ export default function MaintenanceBanner() {
             .catch(() => {
                 // silently fail — banner simply won't show
             });
-    }, []);
+    }, [isQrRoute]);
 
     useEffect(() => {
         const root = document.documentElement;
 
-        if (!visible || !bannerData?.isActive) {
+        if (isQrRoute || !visible || !bannerData?.isActive) {
             root.style.setProperty("--maintenance-banner-offset", "0px");
             return;
         }
@@ -60,10 +65,10 @@ export default function MaintenanceBanner() {
             window.removeEventListener("resize", updateOffset);
             root.style.setProperty("--maintenance-banner-offset", "0px");
         };
-    }, [visible, bannerData]);
+    }, [isQrRoute, visible, bannerData]);
 
-    // Don't render if not fetched yet, not active, or dismissed
-    if (!bannerData || !bannerData.isActive || !visible) return null;
+    // Don't render on QR pages, if not fetched yet, not active, or dismissed
+    if (isQrRoute || !bannerData || !bannerData.isActive || !visible) return null;
 
     return (
         <div
