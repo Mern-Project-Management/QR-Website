@@ -19,18 +19,41 @@ import {
   ArrowLeft,
   Car,
   PawPrint,
-  QrCode,
   Sparkles,
   MapPin,
   User,
+  Bike,
+  Home,
+  QrCode,
 } from "lucide-react";
-import { getAdminOrigin } from "@/lib/adminOrigin";
-import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
+import { getAdminImageOrigin, getAdminOrigin } from "@/lib/adminOrigin";
+import {
+  formatOtpCooldownMessage,
+  parseCooldownFromMessage,
+  useCountdown,
+} from "@/hooks/useCountdown";
 import { isStaffSession } from "@/lib/resolveUserRole";
+import {
+  getCategoryAccentClasses,
+  getCategoryLabel,
+  isBikeQrCategory,
+  isHomeQrCategory,
+  isPetQrCategory,
+  isVehicleQrCategory,
+  QrCategoryIcon,
+  type QrCategoryItem,
+} from "@/lib/qrCategoryDisplay";
 import Image from "next/image";
 
-const isPetQrCategory = (cat: string) => /pet|dog|cat/i.test(cat);
-const isVehicleQrCategory = (cat: string) => /vehicle|car|bike|motor/i.test(cat);
+const isVehicleFormCategory = (cat: string) => isVehicleQrCategory(cat) || isBikeQrCategory(cat);
+
+function getFormSectionCategoryIcon(category: string) {
+  if (isBikeQrCategory(category)) return <Bike className="h-5 w-5" aria-hidden />;
+  if (isHomeQrCategory(category)) return <Home className="h-5 w-5" aria-hidden />;
+  if (isPetQrCategory(category)) return <PawPrint className="h-5 w-5" aria-hidden />;
+  if (isVehicleQrCategory(category)) return <Car className="h-5 w-5" aria-hidden />;
+  return <QrCode className="h-5 w-5" aria-hidden />;
+}
 
 type Phase = "dispatch" | "activate" | "contact" | "blocked";
 
@@ -93,11 +116,7 @@ function getAssetImageSrc(imagePath: string | null | undefined, fallback = "/ima
   if (!imagePath?.trim()) return fallback;
   const path = imagePath.trim();
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  if (path.startsWith("/api/") || path.startsWith("/upload")) {
-    return `${getAdminOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
-  }
-  const resolved = resolveBackendImageSrc(path, fallback);
-  return typeof resolved === "string" ? resolved : fallback;
+  return `${getAdminImageOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function buildContactDisplay(data: LandingData) {
@@ -106,7 +125,7 @@ function buildContactDisplay(data: LandingData) {
   const vehicle = details?.vehicle;
   const pet = details?.pet;
   const owner = details?.owner;
-  const isVehicle = isVehicleQrCategory(category);
+  const isVehicle = isVehicleFormCategory(category);
   const isPet = isPetQrCategory(category);
 
   let primaryTitle = (data.assetName || details?.name || "").trim();
@@ -163,15 +182,25 @@ const BTN_SECONDARY =
 const BTN_GHOST =
   "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400";
 
-function QrBrandMark() {
+function QrBrandMark({
+  category,
+  categories = [],
+}: {
+  category?: string;
+  categories?: QrCategoryItem[];
+}) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25">
-        <QrCode className="h-5 w-5" aria-hidden />
-      </div>
+      {category ? (
+        <QrCategoryIcon category={category} categories={categories} size="xs" filled />
+      ) : (
+        <QrCategoryIcon category="QR" categories={categories} size="xs" filled />
+      )}
       <div className="leading-tight">
         <p className="text-sm font-bold text-slate-900">Odokho</p>
-        <p className="text-[11px] font-medium text-slate-500">Secure QR Contact</p>
+        <p className="text-[11px] font-medium text-slate-500">
+          {category ? getCategoryLabel(category, categories) : "Secure QR Contact"}
+        </p>
       </div>
     </div>
   );
@@ -182,11 +211,15 @@ function QrPageHeader({
   subtitle,
   onBack,
   badge,
+  category,
+  categories = [],
 }: {
   title?: string;
   subtitle?: string;
   onBack?: () => void;
   badge?: string;
+  category?: string;
+  categories?: QrCategoryItem[];
 }) {
   return (
     <header className="mb-6 space-y-4">
@@ -197,7 +230,7 @@ function QrPageHeader({
             Back
           </button>
         ) : (
-          <QrBrandMark />
+          <QrBrandMark category={category} categories={categories} />
         )}
         {badge && (
           <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-700">
@@ -205,12 +238,17 @@ function QrPageHeader({
           </span>
         )}
       </div>
-      {title && (
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">{title}</h1>
-          {subtitle && <p className="mt-2 max-w-prose text-sm leading-relaxed text-slate-600">{subtitle}</p>}
+      {/* {title && (
+        <div className="flex items-start gap-4">
+          {category ? (
+            <QrCategoryIcon category={category} categories={categories} size="md" className="mt-0.5 shrink-0" />
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">{title}</h1>
+            {subtitle && <p className="mt-2 max-w-prose text-sm leading-relaxed text-slate-600">{subtitle}</p>}
+          </div>
         </div>
-      )}
+      )} */}
     </header>
   );
 }
@@ -294,6 +332,8 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [data, setData] = useState<LandingData | null>(null);
   const [adminStaff, setAdminStaff] = useState(false);
+  const [categories, setCategories] = useState<QrCategoryItem[]>([]);
+  const [loadRetryAfter, setLoadRetryAfter] = useState(0);
   const ADMIN_ORIGIN = getAdminOrigin();
 
   const [deviceId] = useState(() => {
@@ -414,6 +454,25 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   }, [uniqueId, deviceId, ADMIN_ORIGIN]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadCategories = async () => {
+      try {
+        const res = await fetch("/api/backend/categories", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        if (!Array.isArray(json) || cancelled) return;
+        setCategories(json.filter((cat: QrCategoryItem) => cat && cat.is_active !== false));
+      } catch {
+        // Category icons fall back to built-in Lucide icons.
+      }
+    };
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!data) return;
 
     if (data.phase === "dispatch" && isStaff) {
@@ -458,21 +517,34 @@ function QrLandingClient({ uniqueId: raw }: { uniqueId: string }) {
   return (
     <div className={SHELL}>
       <main className="flex flex-1 flex-col">
-        {isNotActive && <BlockedSection />}
+        {isNotActive && <BlockedSection category={data.category} categories={categories} />}
         {data.phase === "activate" && (
-          <ActivateSection uniqueId={uniqueId} category={data.category} prefill={data.prefill} />
+          <ActivateSection
+            uniqueId={uniqueId}
+            category={data.category}
+            categories={categories}
+            prefill={data.prefill}
+          />
         )}
-        {data.phase === "contact" && <ContactSection uniqueId={uniqueId} data={data} />}
+        {data.phase === "contact" && (
+          <ContactSection uniqueId={uniqueId} data={data} categories={categories} />
+        )}
       </main>
       {!isNotActive && <Footer />}
     </div>
   );
 }
 
-function BlockedSection() {
+function BlockedSection({
+  category,
+  categories = [],
+}: {
+  category?: string;
+  categories?: QrCategoryItem[];
+}) {
   return (
     <div className={PAGE}>
-      <QrPageHeader badge="Inactive" />
+      <QrPageHeader badge="Inactive" category={category} categories={categories} />
       <div className={`${CARD} ${CARD_PAD} text-center`}>
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
           <AlertTriangle className="h-10 w-10 text-amber-600" aria-hidden />
@@ -586,7 +658,7 @@ const PET_CONTACT_REASONS: ContactReasonOption[] = [
 
 function getContactReasons(category: string): ContactReasonOption[] {
   if (isPetQrCategory(category)) return PET_CONTACT_REASONS;
-  if (isVehicleQrCategory(category)) return VEHICLE_CONTACT_REASONS;
+  if (isVehicleFormCategory(category)) return VEHICLE_CONTACT_REASONS;
   return [
     { label: "Found Item", value: "FOUND" },
     { label: "Return / Handover", value: "RETURN" },
@@ -640,11 +712,12 @@ function QrFlowNav({
 interface ActivateSectionProps {
   uniqueId: string;
   category: string;
+  categories: QrCategoryItem[];
   prefill: LandingData["prefill"];
 }
 
-function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) {
-  const isVehicle = isVehicleQrCategory(category);
+function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSectionProps) {
+  const isVehicle = isVehicleFormCategory(category);
   const isPet = isPetQrCategory(category);
 
   const [saving, setSaving] = useState(false);
@@ -678,16 +751,24 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
   const [emergency2, setEmergency2] = useState("");
 
   const heading = isVehicle
-    ? "Activate Your Vehicle QR"
+    ? isBikeQrCategory(category)
+      ? "Activate Your Bike QR"
+      : "Activate Your Vehicle QR"
     : isPet
       ? "Activate Your Pet QR"
-      : "Activate Your Smart QR";
+      : isHomeQrCategory(category)
+        ? "Activate Your Home QR"
+        : "Activate Your Smart QR";
 
   const subheading = isVehicle
-    ? "Let people reach you about your vehicle without exposing your number."
+    ? isBikeQrCategory(category)
+      ? "Let people reach you about your bike without exposing your number."
+      : "Let people reach you about your vehicle without exposing your number."
     : isPet
       ? "If your pet is found, the finder can reach you safely and instantly."
-      : "Help people contact you securely if your tagged item is found.";
+      : isHomeQrCategory(category)
+        ? "When you're away, visitors can reach you securely through your home QR."
+        : "Help people contact you securely if your tagged item is found.";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -760,7 +841,7 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
   if (activated) {
     return (
       <div className={PAGE}>
-        <QrPageHeader badge="Active" />
+        <QrPageHeader badge="Active" category={category} categories={categories} />
         <div className={`${CARD} ${CARD_PAD} text-center`}>
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30">
             <CheckCircle2 className="h-7 w-7" />
@@ -790,7 +871,13 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
 
   return (
     <div className={PAGE}>
-      <QrPageHeader title={heading} subtitle={subheading} badge="Activate" />
+      <QrPageHeader
+        title={heading}
+        subtitle={subheading}
+        badge="Activate"
+        category={category}
+        categories={categories}
+      />
 
       <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
         {trustItems.map(({ icon: Icon, label }) => (
@@ -870,7 +957,11 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
         </FormSection>
 
         {isVehicle && (
-          <FormSection icon={<Car className="h-5 w-5" />} title="Vehicle details" description="Shown to people who scan your QR.">
+          <FormSection
+            icon={getFormSectionCategoryIcon(category)}
+            title={isBikeQrCategory(category) ? "Bike details" : "Vehicle details"}
+            description="Shown to people who scan your QR."
+          >
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
@@ -993,9 +1084,10 @@ function ActivateSection({ uniqueId, category, prefill }: ActivateSectionProps) 
 interface ContactSectionProps {
   uniqueId: string;
   data: LandingData;
+  categories: QrCategoryItem[];
 }
 
-function ContactSection({ uniqueId, data }: ContactSectionProps) {
+function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
   const [view, setView] = useState<ContactView>("contact");
   const [verifyMode, setVerifyMode] = useState<"call" | "sms">("call");
 
@@ -1011,7 +1103,9 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
   const selectedReasonLabel =
     contactReasons.find((r) => r.value === selectedReason)?.label ?? selectedReason;
 
-  const isVehicle = isVehicleQrCategory(display.category);
+  const isVehicle = isVehicleFormCategory(display.category);
+  const categoryAccent = getCategoryAccentClasses(display.category);
+  const categoryLabel = getCategoryLabel(display.category, categories);
 
   const openVerify = (mode: "call" | "sms") => {
     setVerifyMode(mode);
@@ -1027,6 +1121,8 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
         mode={verifyMode}
         reason={selectedReason}
         reasonLabel={selectedReasonLabel}
+        category={display.category}
+        categories={categories}
       />
     );
   }
@@ -1037,6 +1133,7 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
         uniqueId={uniqueId}
         assetLabel={display.primaryTitle}
         category={display.category}
+        categories={categories}
       />
     );
   }
@@ -1044,20 +1141,30 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
   return (
     <div className={PAGE}>
       <QrFlowNav current="contact" />
-      <QrPageHeader title="Contact owner" subtitle="Choose how to reach them securely. Your number stays private." badge="Active" />
+      <QrPageHeader
+        title="Contact owner"
+        subtitle="Choose how to reach them securely. Your number stays private."
+        badge="Active"
+        category={display.category}
+        categories={categories}
+      />
 
       {/* Asset hero — light card + dark text for reliable contrast */}
       <div
-        className={`${CARD} relative mb-6 overflow-hidden border-l-4 border-l-blue-600 ${CARD_PAD}`}
-        style={{
-          background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #f8fafc 100%)",
-        }}
+        className={`${CARD} relative mb-6 overflow-hidden border-l-4 ${categoryAccent.border} ${CARD_PAD}`}
+        style={{ background: categoryAccent.heroBg }}
       >
         <div className="relative flex items-start gap-4">
+          <QrCategoryIcon
+            category={display.category}
+            categories={categories}
+            size="md"
+            className="hidden shrink-0 sm:block"
+          />
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-800">
-                {isVehicle ? "Vehicle" : isPetQrCategory(display.category) ? "Pet" : display.category}
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${categoryAccent.badge}`}>
+                {categoryLabel}
               </span>
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             </div>
@@ -1100,7 +1207,15 @@ function ContactSection({ uniqueId, data }: ContactSectionProps) {
       <div className="mb-6">
         <h3 className="mb-1 text-sm font-bold text-slate-900">What&apos;s the reason?</h3>
         <p className="mb-3 text-xs text-slate-500">
-          {isVehicle ? "Vehicle-related reasons" : isPetQrCategory(display.category) ? "Pet-related reasons" : "Choose the best match"}
+          {isBikeQrCategory(display.category)
+            ? "Bike-related reasons"
+            : isVehicle
+              ? "Vehicle-related reasons"
+              : isPetQrCategory(display.category)
+                ? "Pet-related reasons"
+                : isHomeQrCategory(display.category)
+                  ? "Home-related reasons"
+                  : "Choose the best match"}
         </p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Contact reason">
           {contactReasons.map((r) => {
@@ -1186,6 +1301,8 @@ interface VerifyNumberViewProps {
   mode?: "call" | "sms";
   reason: string;
   reasonLabel: string;
+  category: string;
+  categories: QrCategoryItem[];
 }
 
 function VerifyNumberView({
@@ -1195,6 +1312,8 @@ function VerifyNumberView({
   mode = "call",
   reason,
   reasonLabel,
+  category,
+  categories,
 }: VerifyNumberViewProps) {
   const [step, setStep] = useState<"phone" | "otp" | "ready">("phone");
   const [phone, setPhone] = useState("");
@@ -1351,6 +1470,8 @@ function VerifyNumberView({
           setView("contact");
         }}
         badge="Step 2"
+        category={category}
+        categories={categories}
       />
 
       {reasonLabel && (
@@ -1480,6 +1601,7 @@ interface ReportEmergencyViewProps {
   uniqueId: string;
   assetLabel?: string;
   category: string;
+  categories: QrCategoryItem[];
 }
 
 function getEmergencyIssues(category: string) {
@@ -1499,7 +1621,7 @@ function getEmergencyIssues(category: string) {
   ];
 }
 
-function ReportEmergencyView({ setView, uniqueId, assetLabel, category }: ReportEmergencyViewProps) {
+function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categories }: ReportEmergencyViewProps) {
   const issues = useMemo(() => getEmergencyIssues(category), [category]);
 
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -1628,6 +1750,8 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category }: Report
         }
         onBack={() => (step === "verify" ? setStep("form") : setView("contact"))}
         badge="Urgent"
+        category={category}
+        categories={categories}
       />
 
       {step === "form" && (

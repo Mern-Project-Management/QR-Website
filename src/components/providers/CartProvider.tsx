@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { Product } from "@/const/productData";
 import {
@@ -14,9 +14,19 @@ export interface CartItem {
     quantity: number;
 }
 
+type AddToCartMode = "add" | "set";
+
+interface AddToCartOptions {
+    mode?: AddToCartMode;
+    openCart?: boolean;
+}
+
 interface CartContextType {
     cart: CartItem[];
-    addToCart: (product: Product, quantity?: number) => void;
+    addToCart: (product: Product, quantity?: number, options?: AddToCartOptions) => void;
+    buyNow: (product: Product, quantity?: number) => void;
+    openCart: () => void;
+    cartOpenRequestId: number;
     removeFromCart: (productId: number) => void;
     clearCart: () => void;
     cartSubtotal: number;
@@ -33,7 +43,50 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const [isDbLoaded, setIsDbLoaded] = useState(false);
     const [discountQuote, setDiscountQuote] = useState<CartDiscountQuote | null>(null);
     const [discountLoading, setDiscountLoading] = useState(false);
+    const [cartOpenRequestId, setCartOpenRequestId] = useState(0);
     const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
+
+    const openCart = useCallback(() => {
+        setCartOpenRequestId((id) => id + 1);
+    }, []);
+
+    const syncCartItemToBackend = useCallback(
+        (product: Product, quantity: number, mode: AddToCartMode) => {
+            if (status !== "authenticated" || !accessToken) return;
+
+            const headers = {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            };
+            const body = JSON.stringify({
+                jwt: accessToken,
+                product: { id: product.id },
+                productId: product.id,
+                quantity,
+            });
+
+            if (mode === "set") {
+                fetch(`/api/carts?productId=${encodeURIComponent(String(product.id))}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                })
+                    .catch((e) => console.error("Failed to reset cart item (backend)", e))
+                    .finally(() => {
+                        if (quantity > 0) {
+                            fetch("/api/carts", { method: "POST", headers, body }).catch((e) =>
+                                console.error("Failed to set cart item (backend)", e)
+                            );
+                        }
+                    });
+                return;
+            }
+
+            fetch("/api/carts", { method: "POST", headers, body }).catch((e) =>
+                console.error("Failed to add to cart (backend)", e)
+            );
+        },
+        [status, accessToken]
+    );
 
     useEffect(() => {
         const savedCart = localStorage.getItem("cart");
@@ -118,32 +171,40 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [cart]);
 
-    const addToCart = (product: Product, quantity: number = 1) => {
-        setCart((prev) => {
-            const existing = prev.find((item) => item.product.id === product.id);
-            if (existing) {
-                return prev.map((item) =>
-                    item.product.id === product.id
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item
-                );
-            }
-            return [...prev, { product, quantity }];
-        });
+    const addToCart = useCallback(
+        (product: Product, quantity: number = 1, options?: AddToCartOptions) => {
+            const mode = options?.mode ?? "add";
 
-        if (status === "authenticated" && accessToken) {
-            fetch("/api/carts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-                body: JSON.stringify({
-                    jwt: accessToken,
-                    product: { id: product.id },
-                    productId: product.id,
-                    quantity,
-                }),
-            }).catch((e) => console.error("Failed to add to cart (backend)", e));
-        }
-    };
+            setCart((prev) => {
+                const existing = prev.find((item) => item.product.id === product.id);
+                if (existing) {
+                    const nextQuantity = mode === "set" ? quantity : existing.quantity + quantity;
+                    if (nextQuantity <= 0) {
+                        return prev.filter((item) => item.product.id !== product.id);
+                    }
+                    return prev.map((item) =>
+                        item.product.id === product.id ? { ...item, quantity: nextQuantity } : item
+                    );
+                }
+                if (quantity <= 0) return prev;
+                return [...prev, { product, quantity }];
+            });
+
+            syncCartItemToBackend(product, quantity, mode);
+
+            if (options?.openCart) {
+                openCart();
+            }
+        },
+        [openCart, syncCartItemToBackend]
+    );
+
+    const buyNow = useCallback(
+        (product: Product, quantity: number = 1) => {
+            addToCart(product, quantity, { mode: "set", openCart: true });
+        },
+        [addToCart]
+    );
 
     const removeFromCart = (productId: number) => {
         setCart((prev) => prev.filter((item) => item.product.id !== productId));
@@ -176,6 +237,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         <CartContext.Provider value={{
             cart,
             addToCart,
+            buyNow,
+            openCart,
+            cartOpenRequestId,
             removeFromCart,
             clearCart,
             cartSubtotal: totals.cartSubtotal,

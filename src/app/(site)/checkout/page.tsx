@@ -112,11 +112,6 @@ function clearCheckoutSessionId(): void {
   }
 }
 
-interface CheckoutCartItem {
-  product: { id: number; title: string; price: number };
-  quantity: number;
-}
-
 function formatOfferSavings(offer: AvailableDiscountOffer): string {
   if (offer.estimatedDiscount > 0) {
     return `Save ₹${offer.estimatedDiscount.toFixed(2).replace(/\.00$/, '')}`;
