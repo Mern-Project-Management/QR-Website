@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState, useEffect, useMemo } from "react";
-import { flushSync } from "react-dom";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Star, Truck, Package, ShieldCheck } from "lucide-react";
 import ProductGallery from "@/components/ui/ProductGallery";
@@ -26,7 +25,7 @@ function formatInr(value: number | string): string {
 
 export default function SingleProductPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
-    const { addToCart } = useCart();
+    const { addToCart, buyNow } = useCart();
     const [quantity, setQuantity] = useState(1);
     const [cartMessage, setCartMessage] = useState<string | null>(null);
 
@@ -167,9 +166,7 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
 
     const handleBuyNow = () => {
         if (!inStock) return;
-        flushSync(() => {
-            addToCart(product, quantity);
-        });
+        buyNow(product, quantity);
     };
 
     return (

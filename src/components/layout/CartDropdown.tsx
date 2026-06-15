@@ -8,11 +8,11 @@ import { ShoppingCart, X, Plus, Minus, Trash2 } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 
 export default function CartDropdown() {
-    const { cart, addToCart, removeFromCart, cartSubtotal, cartDiscount, cartTotal, discountLoading } = useCart();
+    const { cart, addToCart, removeFromCart, cartSubtotal, cartDiscount, cartTotal, discountLoading, cartOpenRequestId } = useCart();
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const prevCartCountRef = useRef<number>(cart.length);
+    const prevCartOpenRequestIdRef = useRef(0);
 
     const toggleDropdown = () => setIsOpen(!isOpen);
 
@@ -44,23 +44,19 @@ export default function CartDropdown() {
     }, [isOpen]);
 
     useEffect(() => {
-        const prev = prevCartCountRef.current;
-        const next = cart.length;
-        prevCartCountRef.current = next;
+        if (cartOpenRequestId === prevCartOpenRequestIdRef.current) return;
+        prevCartOpenRequestIdRef.current = cartOpenRequestId;
 
-        // If something was added, briefly show the cart then auto-close.
-        if (next > prev) {
-            setIsOpen(true);
-            if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-            autoCloseTimerRef.current = setTimeout(() => {
-                setIsOpen(false);
-            }, 4000);
-        }
+        setIsOpen(true);
+        if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = setTimeout(() => {
+            setIsOpen(false);
+        }, 4000);
 
         return () => {
             if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
         };
-    }, [cart.length]);
+    }, [cartOpenRequestId]);
 
     return (
         <div ref={containerRef} className="relative shrink-0">
