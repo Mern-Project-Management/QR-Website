@@ -3,20 +3,84 @@
 import { useCart } from "@/components/providers/CartProvider";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { ShoppingCart, X, Plus, Minus, Trash2 } from "react-feather";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ShoppingCart, X, Plus, Minus, Trash2, Tag, Gift } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
+import { fireCartDiscountCelebration } from "@/lib/cartCelebration";
+import {
+    getAutoDiscountOffers,
+    getEligibleAutoOffers,
+    getEligibleCouponOffers,
+    getEligibleOfferMessage,
+    getOfferHintMessage,
+    getPendingCouponOffers,
+    offerEligibilityKey,
+    type AvailableDiscountOffer,
+} from "@/lib/cartDiscounts";
 
 export default function CartDropdown() {
-    const { cart, addToCart, removeFromCart, cartSubtotal, cartDiscount, cartTotal, discountLoading, cartOpenRequestId } = useCart();
+    const {
+        cart,
+        addToCart,
+        removeFromCart,
+        cartSubtotal,
+        cartDiscount,
+        cartTotal,
+        discountLoading,
+        cartOpenRequestId,
+        availableOffers,
+        refreshDiscountQuote,
+    } = useCart();
+
+    const cartTotalQty = useMemo(
+        () => cart.reduce((sum, item) => sum + item.quantity, 0),
+        [cart]
+    );
+
+    const autoDiscountOffers = useMemo(
+        () => getAutoDiscountOffers(availableOffers),
+        [availableOffers]
+    );
+
+    const pendingCouponOffers = useMemo(
+        () => getPendingCouponOffers(availableOffers),
+        [availableOffers]
+    );
+
+    const eligibleCouponOffers = useMemo(
+        () => getEligibleCouponOffers(availableOffers),
+        [availableOffers]
+    );
+
+    const eligibleAutoOffers = useMemo(
+        () => getEligibleAutoOffers(availableOffers),
+        [availableOffers]
+    );
+
+    const hasAnyOfferContent =
+        discountLoading ||
+        autoDiscountOffers.length > 0 ||
+        pendingCouponOffers.length > 0 ||
+        eligibleCouponOffers.length > 0 ||
+        eligibleAutoOffers.length > 0 ||
+        cartDiscount > 0;
+
     const [isOpen, setIsOpen] = useState(false);
+    const [showCelebration, setShowCelebration] = useState(false);
+    const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevCartOpenRequestIdRef = useRef(0);
+    const prevEligibilityRef = useRef<Map<string, boolean>>(new Map());
+    const eligibilityInitializedRef = useRef(false);
 
     const toggleDropdown = () => setIsOpen(!isOpen);
-
     const closeDropdown = () => setIsOpen(false);
+
+    const extendAutoClose = (ms: number) => {
+        if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = setTimeout(() => setIsOpen(false), ms);
+    };
 
     useEffect(() => {
         if (!isOpen) return;
@@ -48,18 +112,157 @@ export default function CartDropdown() {
         prevCartOpenRequestIdRef.current = cartOpenRequestId;
 
         setIsOpen(true);
-        if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-        autoCloseTimerRef.current = setTimeout(() => {
-            setIsOpen(false);
-        }, 4000);
+        extendAutoClose(5000);
 
         return () => {
             if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
         };
     }, [cartOpenRequestId]);
 
+    useEffect(() => {
+        if (isOpen && cart.length > 0) {
+            refreshDiscountQuote();
+        }
+    }, [isOpen, cart.length, refreshDiscountQuote]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setShowCelebration(false);
+            setCelebrationMessage(null);
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (discountLoading || !isOpen) return;
+
+        const byKey = new Map<string, AvailableDiscountOffer>();
+        for (const offer of [...eligibleCouponOffers, ...pendingCouponOffers, ...autoDiscountOffers]) {
+            byKey.set(offerEligibilityKey(offer), offer);
+        }
+
+        let newlyEligible: AvailableDiscountOffer | null = null;
+
+        for (const offer of byKey.values()) {
+            const key = offerEligibilityKey(offer);
+            const applicable = offer.isApplicable;
+            const prev = prevEligibilityRef.current.get(key);
+
+            if (eligibilityInitializedRef.current && prev === false && applicable) {
+                newlyEligible = offer;
+            }
+
+            prevEligibilityRef.current.set(key, applicable);
+        }
+
+        eligibilityInitializedRef.current = true;
+
+        if (newlyEligible) {
+            setShowCelebration(true);
+            setCelebrationMessage(getEligibleOfferMessage(newlyEligible));
+            fireCartDiscountCelebration();
+            extendAutoClose(8000);
+        }
+    }, [
+        availableOffers,
+        discountLoading,
+        isOpen,
+        eligibleCouponOffers,
+        pendingCouponOffers,
+        autoDiscountOffers,
+    ]);
+
+    const renderPendingOfferCard = (offer: AvailableDiscountOffer) => (
+        <div
+            key={offer.ruleId}
+            className="flex gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5"
+        >
+            <Tag size={14} className="mt-0.5 shrink-0 text-violet-700" aria-hidden />
+            <div className="min-w-0">
+                <p className="text-xs font-bold text-violet-900">{offer.name}</p>
+                <p className="mt-1 text-[11px] font-semibold leading-snug text-violet-800">
+                    {getOfferHintMessage(offer, cartTotalQty)}
+                    {offer.code ? ` Use code ${offer.code} at checkout.` : ""}
+                </p>
+            </div>
+        </div>
+    );
+
+    const renderEligibleOfferCard = (offer: AvailableDiscountOffer) => (
+        <div
+            key={`eligible-${offer.ruleId}`}
+            className="relative overflow-hidden flex gap-2 rounded-xl border border-emerald-300 bg-gradient-to-br from-emerald-50 via-green-50 to-amber-50 px-3 py-2.5 shadow-sm animate-[pulse-soft_2s_ease-in-out_infinite]"
+        >
+            <div className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-amber-200/40 blur-xl" aria-hidden />
+            <Gift size={16} className="mt-0.5 shrink-0 text-emerald-700" aria-hidden />
+            <div className="min-w-0 flex-1">
+                <p className="text-xs font-extrabold text-emerald-900">
+                    🎉 Hurray! You&apos;re eligible for the discount
+                </p>
+                <p className="mt-0.5 text-[11px] font-bold text-emerald-800">{offer.name}</p>
+                <p className="mt-1 text-[11px] font-semibold leading-snug text-emerald-900/90">
+                    {getEligibleOfferMessage(offer)}
+                </p>
+            </div>
+        </div>
+    );
+
+    const renderAutoOfferCard = (offer: AvailableDiscountOffer) => {
+        if (offer.isApplied) {
+            return (
+                <div
+                    key={offer.ruleId}
+                    className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
+                >
+                    <Tag size={14} className="mt-0.5 shrink-0 text-emerald-700" aria-hidden />
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold text-emerald-900">{offer.name}</p>
+                        <p className="mt-1 text-[11px] font-semibold leading-snug text-emerald-800">
+                            {offer.estimatedDiscount > 0
+                                ? `You're saving ₹${offer.estimatedDiscount.toFixed(2).replace(/\.00$/, "")} on this order.`
+                                : offer.description}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        if (offer.isApplicable) {
+            return renderEligibleOfferCard(offer);
+        }
+
+        return (
+            <div
+                key={offer.ruleId}
+                className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"
+            >
+                <Tag size={14} className="mt-0.5 shrink-0 text-amber-700" aria-hidden />
+                <div className="min-w-0">
+                    <p className="text-xs font-bold text-amber-900">{offer.name}</p>
+                    {offer.description ? (
+                        <p className="mt-0.5 text-[11px] leading-snug text-amber-800 opacity-90">
+                            {offer.description}
+                        </p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] font-semibold leading-snug text-amber-800">
+                        {getOfferHintMessage(offer, cartTotalQty)}
+                    </p>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div ref={containerRef} className="relative shrink-0">
+            <style>{`
+                @keyframes pulse-soft {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.25); }
+                    50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+                }
+                @keyframes celebrate-pop {
+                    0% { transform: scale(0.95); opacity: 0; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+            `}</style>
             <button
                 type="button"
                 onClick={toggleDropdown}
@@ -81,8 +284,24 @@ export default function CartDropdown() {
                     aria-label="Cart"
                     className="fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none"
                 >
+                    {showCelebration && celebrationMessage ? (
+                        <div
+                            className="shrink-0 border-b border-emerald-200 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 px-4 py-3 text-white animate-[celebrate-pop_0.35s_ease-out]"
+                            role="status"
+                        >
+                            <p className="text-sm font-extrabold tracking-tight">
+                                🎉 Hurray! You&apos;re eligible for the discount!
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-emerald-50 leading-snug">
+                                {celebrationMessage}
+                            </p>
+                        </div>
+                    ) : null}
+
                     <div className="flex items-center justify-between px-4 sm:px-4.5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/50 shrink-0">
-                        <h3 className="text-sm font-extrabold tracking-wide text-gray-900">Shopping Cart ({cart.length})</h3>
+                        <h3 className="text-sm font-extrabold tracking-wide text-gray-900">
+                            Shopping Cart ({cart.length})
+                        </h3>
                         <button
                             type="button"
                             onClick={closeDropdown}
@@ -104,10 +323,16 @@ export default function CartDropdown() {
                         <>
                             <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4.5 py-1 sm:py-2 divide-y divide-gray-100">
                                 {cart.map((item) => (
-                                    <div key={item.product.id} className="flex gap-3 py-3.5 sm:py-4 items-start transition-all duration-300">
+                                    <div
+                                        key={item.product.id}
+                                        className="flex gap-3 py-3.5 sm:py-4 items-start transition-all duration-300"
+                                    >
                                         <div className="relative w-14 h-14 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0">
                                             <Image
-                                                src={resolveBackendImageSrc(item.product.imgOne, "/images/fallback-image.png")}
+                                                src={resolveBackendImageSrc(
+                                                    item.product.imgOne,
+                                                    "/images/fallback-image.png"
+                                                )}
                                                 alt={item.product.title}
                                                 fill
                                                 sizes="56px"
@@ -150,10 +375,12 @@ export default function CartDropdown() {
                                                     >
                                                         <Minus size={12} strokeWidth={2.5} />
                                                     </button>
-                                                    <span className="w-6 text-center text-xs font-extrabold text-gray-800">{item.quantity}</span>
+                                                    <span className="w-6 text-center text-xs font-extrabold text-gray-800">
+                                                        {item.quantity}
+                                                    </span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => addToCart(item.product, 1)}
+                                                        onClick={() => addToCart(item.product, 1, { openCart: true })}
                                                         className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition active:scale-95 shrink-0"
                                                         aria-label="Increase quantity"
                                                     >
@@ -164,6 +391,44 @@ export default function CartDropdown() {
                                         </div>
                                     </div>
                                 ))}
+
+                                {hasAnyOfferContent ? (
+                                    <div className="py-3 space-y-2 border-t border-gray-100 mt-1">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-0.5">
+                                            Offers & savings
+                                        </p>
+                                        {discountLoading && eligibleCouponOffers.length === 0 && pendingCouponOffers.length === 0 ? (
+                                            <p className="text-xs text-gray-500 px-1">Checking available offers…</p>
+                                        ) : null}
+
+                                        {eligibleCouponOffers.map(renderEligibleOfferCard)}
+
+                                        {autoDiscountOffers.map(renderAutoOfferCard)}
+
+                                        {pendingCouponOffers
+                                            .filter(
+                                                (pending) =>
+                                                    !eligibleCouponOffers.some(
+                                                        (e) => e.ruleId === pending.ruleId
+                                                    )
+                                            )
+                                            .map(renderPendingOfferCard)}
+
+                                        {!discountLoading &&
+                                        eligibleCouponOffers.length === 0 &&
+                                        autoDiscountOffers.length === 0 &&
+                                        pendingCouponOffers.length === 0 &&
+                                        cartDiscount > 0 ? (
+                                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                                                <p className="text-xs font-bold text-emerald-900">Discount applied</p>
+                                                <p className="mt-0.5 text-[11px] font-semibold text-emerald-800">
+                                                    You&apos;re saving ₹
+                                                    {cartDiscount.toFixed(2).replace(/\.00$/, "")} on this order.
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                             </div>
                             <div className="px-4 sm:px-4.5 py-3.5 sm:py-4 border-t border-gray-100 bg-gray-50/40 shrink-0">
                                 {cartDiscount > 0 && (
@@ -181,7 +446,7 @@ export default function CartDropdown() {
                                 <div className="flex justify-between items-center font-bold text-gray-900">
                                     <span className="text-sm">Total Amount</span>
                                     <span className="text-base text-blue-900 tabular-nums">
-                                        {discountLoading ? '…' : `₹${cartTotal.toFixed(2)}`}
+                                        {discountLoading ? "…" : `₹${cartTotal.toFixed(2)}`}
                                     </span>
                                 </div>
                                 <Link

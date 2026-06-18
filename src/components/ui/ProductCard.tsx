@@ -25,6 +25,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
     const { addToCart } = useCart();
     const quantity = 1;
     const router = useRouter();
+    const inStock = product.availability !== "Out of Stock";
 
     // Use the actual backend slug if available, else fallback to formatted title
     const productSlug = product.slug || product.title.toLowerCase().replace(/\s+/g, '-');
@@ -34,8 +35,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
             e.preventDefault();
             e.stopPropagation();
         }
-        addToCart(product, quantity);
-        alert(`Added ${quantity} x ${product.title} to cart!`);
+        if (!inStock) return;
+        addToCart(product, quantity, { openCart: true });
     };
 
     const handleCardClick = () => {
@@ -110,9 +111,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
                     {/* action buttons */}
                     <div className="flex flex-row gap-2 mt-5">
                         <Button
-                            label="Add to Cart"
+                            label={inStock ? "Add to Cart" : "Out of Stock"}
                             icon=""
-                            className="cursor-pointer"
+                            className={`cursor-pointer ${!inStock ? "opacity-60 pointer-events-none" : ""}`}
                             bgColor="bg-blue-900"
                             textColor="text-white"
                             onClick={handleAddToCart}
@@ -194,14 +195,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
                         </span>
                     </div>
                 )}
-                {/* Optional: Add action buttons in compact layout too if desired */}
                 <div className="flex flex-row gap-2 mt-3">
                     <Button
-                        label="View Details"
-                        padding="px-4 py-2"
+                        label={inStock ? "Add to Cart" : "Out of Stock"}
+                        padding="px-3 py-2"
                         icon=""
-                        bgColor="bg-brand-primary"
+                        bgColor="bg-blue-900"
                         textColor="text-white"
+                        className={`flex-1 text-sm ${!inStock ? "opacity-60 pointer-events-none" : ""}`}
+                        onClick={handleAddToCart}
+                    />
+                    <Button
+                        label="View"
+                        padding="px-3 py-2"
+                        icon=""
+                        bgColor="bg-gray-100"
+                        className="flex-1 border border-blue-900 text-sm"
+                        textColor="text-gray-900"
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();

@@ -92,6 +92,9 @@ export default function Footer({ logo = "/images/logo/combined-logo-white.png" }
     const email = footerData?.email || "info@qr.com";
     const address = footerData?.address || "3rd Floor, Sapphire, Sarigam Rd, above Axis Bank, Gujarat 396191";
 
+    const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`;
+    const emailHref = `mailto:${email.trim()}`;
+
     return (
         <footer className={`font-dm relative z-10 text-gray-300 bg-gray-900 pt-16 pb-8`}>
             <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -185,17 +188,27 @@ export default function Footer({ logo = "/images/logo/combined-logo-white.png" }
                             CONTACT US
                         </h4>
                         <ul className="flex flex-col gap-5 text-gray-300 font-medium text-sm">
-                            <li className="flex items-start gap-4 hover:text-white transition">
-                                <div className="w-8 h-8 rounded-full bg-blue-900 border border-gray-800 flex items-center justify-center flex-shrink-0 text-white">
-                                    <Phone size={14} />
-                                </div>
-                                <div className="pt-1.5">{phone}</div>
+                            <li>
+                                <a
+                                    href={phoneHref}
+                                    className="flex items-start gap-4 text-gray-300 transition hover:text-white"
+                                >
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-800 bg-blue-900 text-white">
+                                        <Phone size={14} />
+                                    </div>
+                                    <span className="pt-1.5">{phone}</span>
+                                </a>
                             </li>
-                            <li className="flex items-start gap-4 hover:text-white transition">
-                                <div className="w-8 h-8 rounded-full bg-blue-900 border border-gray-800 flex items-center justify-center flex-shrink-0 text-white">
-                                    <Mail size={14} />
-                                </div>
-                                <div className="pt-1.5">{email}</div>
+                            <li>
+                                <a
+                                    href={emailHref}
+                                    className="flex items-start gap-4 text-gray-300 transition hover:text-white"
+                                >
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-800 bg-blue-900 text-white">
+                                        <Mail size={14} />
+                                    </div>
+                                    <span className="pt-1.5 break-all">{email}</span>
+                                </a>
                             </li>
                             <li className="flex items-start gap-4 hover:text-white transition">
                                 <div className="w-8 h-8 rounded-full bg-blue-900 border border-gray-800 flex items-center justify-center flex-shrink-0 text-white">

@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useSession } from "next-auth/react";
 import { Product } from "@/const/productData";
 import {
+  AvailableDiscountOffer,
   CartDiscountQuote,
   emptyCartDiscountQuote,
   fetchCartDiscountQuote,
@@ -33,6 +34,8 @@ interface CartContextType {
     cartDiscount: number;
     cartTotal: number;
     discountLoading: boolean;
+    availableOffers: AvailableDiscountOffer[];
+    refreshDiscountQuote: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -146,30 +149,37 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("cart", JSON.stringify(cart));
     }, [cart]);
 
+    const loadDiscountQuote = useCallback(async (items: CartItem[]) => {
+        if (!items.length) {
+            setDiscountQuote(emptyCartDiscountQuote([]));
+            setDiscountLoading(false);
+            return;
+        }
+        setDiscountLoading(true);
+        const payload = items.map((item) => ({
+            productId: Number(item.product.id),
+            quantity: item.quantity,
+            price: Number(item.product.price),
+        }));
+        const quote = await fetchCartDiscountQuote(payload);
+        setDiscountQuote(quote || emptyCartDiscountQuote(payload));
+        setDiscountLoading(false);
+    }, []);
+
+    const refreshDiscountQuote = useCallback(() => {
+        void loadDiscountQuote(cart);
+    }, [cart, loadDiscountQuote]);
+
     useEffect(() => {
         let cancelled = false;
-        const timer = setTimeout(async () => {
-            if (!cart.length) {
-                setDiscountQuote(emptyCartDiscountQuote([]));
-                return;
-            }
-            setDiscountLoading(true);
-            const items = cart.map((item) => ({
-                productId: item.product.id,
-                quantity: item.quantity,
-                price: Number(item.product.price),
-            }));
-            const quote = await fetchCartDiscountQuote(items);
-            if (!cancelled) {
-                setDiscountQuote(quote || emptyCartDiscountQuote(items));
-                setDiscountLoading(false);
-            }
-        }, 250);
+        const timer = setTimeout(() => {
+            if (!cancelled) void loadDiscountQuote(cart);
+        }, 150);
         return () => {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [cart]);
+    }, [cart, loadDiscountQuote]);
 
     const addToCart = useCallback(
         (product: Product, quantity: number = 1, options?: AddToCartOptions) => {
@@ -230,6 +240,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             cartSubtotal: quote.subtotal,
             cartDiscount: quote.discountTotal,
             cartTotal: quote.total,
+            availableOffers: quote.availableOffers ?? [],
         };
     }, [cart, discountQuote]);
 
@@ -246,6 +257,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             cartDiscount: totals.cartDiscount,
             cartTotal: totals.cartTotal,
             discountLoading,
+            availableOffers: totals.availableOffers,
+            refreshDiscountQuote,
         }}>
             {children}
         </CartContext.Provider>
