@@ -27,7 +27,10 @@ interface CartContextType {
     addToCart: (product: Product, quantity?: number, options?: AddToCartOptions) => void;
     buyNow: (product: Product, quantity?: number) => void;
     openCart: () => void;
-    cartOpenRequestId: number;
+    closeCart: () => void;
+    isCartOpen: boolean;
+    setIsCartOpen: (open: boolean) => void;
+    cartOpenSignal: number;
     removeFromCart: (productId: number) => void;
     clearCart: () => void;
     cartSubtotal: number;
@@ -46,11 +49,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const [isDbLoaded, setIsDbLoaded] = useState(false);
     const [discountQuote, setDiscountQuote] = useState<CartDiscountQuote | null>(null);
     const [discountLoading, setDiscountLoading] = useState(false);
-    const [cartOpenRequestId, setCartOpenRequestId] = useState(0);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [cartOpenSignal, setCartOpenSignal] = useState(0);
     const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
 
     const openCart = useCallback(() => {
-        setCartOpenRequestId((id) => id + 1);
+        setIsCartOpen(true);
+        setCartOpenSignal((n) => n + 1);
+    }, []);
+
+    const closeCart = useCallback(() => {
+        setIsCartOpen(false);
     }, []);
 
     const syncCartItemToBackend = useCallback(
@@ -250,7 +259,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             addToCart,
             buyNow,
             openCart,
-            cartOpenRequestId,
+            closeCart,
+            isCartOpen,
+            setIsCartOpen,
+            cartOpenSignal,
             removeFromCart,
             clearCart,
             cartSubtotal: totals.cartSubtotal,

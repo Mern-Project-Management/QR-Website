@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import type { Product } from "@/const/productData";
 import { PRODUCT_LONG_DESC_CSS } from "./productLongDescStyles";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 
 function formatInr(value: number | string): string {
     const n = typeof value === "string" ? parseFloat(value) : value;
@@ -128,7 +129,7 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
 
     if (loading) {
         return (
-            <div className="min-h-[60vh] px-4 pt-28 pb-16 font-dm">
+            <div className={`min-h-[60vh] px-4 pb-16 font-dm ${PAGE_TOP_PADDING}`}>
                 <div className="mx-auto max-w-screen-xl animate-pulse">
                     <div className="mb-8 h-4 w-48 rounded bg-slate-200" />
                     <div className="grid gap-10 lg:grid-cols-2">
@@ -171,7 +172,7 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
 
     return (
         <div className="relative isolate font-dm">
-            <section className="border-b border-slate-200/70 bg-light-blue-banner pt-24 sm:pt-28 lg:pt-32 pb-8 sm:pb-10">
+            <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-6 sm:pb-8 lg:pb-10 ${PAGE_TOP_PADDING}`}>
                 <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
                     <Breadcrumb
                         items={[
@@ -180,13 +181,16 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
                             { label: product.title },
                         ]}
                     />
-                    <p className="mt-3 max-w-2xl text-pretty text-sm font-medium text-slate-600 sm:text-base">
+                    <h1 className="mt-3 line-clamp-3 text-pretty text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl lg:hidden">
+                        {product.title}
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-pretty text-sm font-medium text-slate-600 sm:mt-3 sm:text-base">
                         {product.subtitle || "Complete your purchase securely. Fast dispatch on in-stock items."}
                     </p>
                 </div>
             </section>
 
-            <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 pb-16 pt-8 sm:pt-10 lg:pb-24 lg:pt-12">
+            <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 pb-16 pt-6 sm:pt-8 lg:pb-24 lg:pt-12">
                 <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-14">
                     <div className="w-full lg:sticky lg:top-28">
                         <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-sm ring-1 ring-slate-900/[0.04] sm:p-4">
@@ -202,7 +206,7 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
 
                     <div className="flex w-full flex-col">
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                            <h1 className="text-pretty text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-[2.35rem] lg:leading-tight">
+                            <h1 className="hidden text-pretty text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:block lg:text-[2.35rem] lg:leading-tight">
                                 {product.title}
                             </h1>
                             {product.badge ? (
