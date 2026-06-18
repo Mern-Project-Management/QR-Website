@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Product } from "@/const/productData";
 import {
@@ -43,7 +44,15 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function isCartUiTarget(target: Node): boolean {
+    const selectors = ["[data-cart-dropdown-root]", "[data-cart-dropdown-panel]", "[data-cart-celebration]"];
+    return selectors.some((selector) =>
+        Array.from(document.querySelectorAll(selector)).some((element) => element.contains(target))
+    );
+}
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+    const pathname = usePathname();
     const { data: session, status } = useSession();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [isDbLoaded, setIsDbLoaded] = useState(false);
@@ -61,6 +70,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const closeCart = useCallback(() => {
         setIsCartOpen(false);
     }, []);
+
+    useEffect(() => {
+        closeCart();
+    }, [pathname, closeCart]);
+
+    useEffect(() => {
+        if (!isCartOpen) return;
+
+        const onPointerDown = (event: MouseEvent | TouchEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (isCartUiTarget(target)) return;
+            closeCart();
+        };
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") closeCart();
+        };
+
+        document.addEventListener("mousedown", onPointerDown);
+        document.addEventListener("touchstart", onPointerDown, { passive: true });
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", onPointerDown);
+            document.removeEventListener("touchstart", onPointerDown);
+            document.removeEventListener("keydown", onKeyDown);
+        };
+    }, [isCartOpen, closeCart]);
 
     const syncCartItemToBackend = useCallback(
         (product: Product, quantity: number, mode: AddToCartMode) => {
