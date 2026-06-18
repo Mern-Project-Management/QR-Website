@@ -8,21 +8,27 @@ import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 
 interface ProductGalleryProps {
     images: Array<string | StaticImageData>;
+    /** Force gallery layout, or use `"auto"` (default) for responsive switching. */
+    layout?: "vertical" | "horizontal" | "auto";
 }
 
-const ProductGallery: React.FC<ProductGalleryProps> = ({ images }) => {
+const ProductGallery: React.FC<ProductGalleryProps> = ({ images, layout: layoutProp = "auto" }) => {
     const reactId = useId().replace(/:/g, "");
     const mainId = `main-carousel-${reactId}`;
     const thumbId = `thumbnail-carousel-${reactId}`;
-    const [layout, setLayout] = useState<"vertical" | "horizontal">("horizontal");
+    const [autoLayout, setAutoLayout] = useState<"vertical" | "horizontal">("horizontal");
 
     useEffect(() => {
+        if (layoutProp !== "auto") return;
+
         const mq = window.matchMedia("(min-width: 1024px)");
-        const update = () => setLayout(mq.matches ? "vertical" : "horizontal");
+        const update = () => setAutoLayout(mq.matches ? "vertical" : "horizontal");
         update();
         mq.addEventListener("change", update);
         return () => mq.removeEventListener("change", update);
-    }, []);
+    }, [layoutProp]);
+
+    const layout = layoutProp === "auto" ? autoLayout : layoutProp;
 
     useEffect(() => {
         let cancelled = false;
@@ -94,7 +100,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images }) => {
             `}</style>
 
             {layout === "vertical" ? (
-                <div className="flex w-full gap-3">
+                <div className="relative isolate z-0 flex w-full gap-3">
                     <div className="relative hidden shrink-0 lg:block">
                         <div className="splide slider-no-arrows slider-no-dots" id={thumbId}>
                             <div className="splide__track">
@@ -143,7 +149,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images }) => {
                     </div>
                 </div>
             ) : (
-                <div className="relative w-full">
+                <div className="relative isolate z-0 w-full overflow-hidden">
                     <div className="main-slider relative overflow-hidden">
                         <div className="splide slider-no-arrows slider-no-dots" id={mainId}>
                             <div className="splide__track">
@@ -167,7 +173,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images }) => {
                         </div>
                     </div>
 
-                    <div className="main-thumb z-10 mt-3 w-full px-1 sm:px-0">
+                    <div className="main-thumb relative z-0 mt-3 w-full px-1 sm:px-0">
                         <div className="splide slider-no-arrows slider-no-dots w-full" id={thumbId}>
                             <div className="splide__track w-full">
                                 <ul className="splide__list">

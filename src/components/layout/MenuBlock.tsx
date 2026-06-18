@@ -80,9 +80,11 @@ const MenuBlock: React.FC<MenuBlockProps> = ({ mobileOpen = false, toggleMobileM
     useEffect(() => {
         if (!mobileOpen) return;
         const prev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        document.body.classList.add("mobile-nav-open");
+        document.body.style.overflow = "hidden";
         return () => {
             document.body.style.overflow = prev;
+            document.body.classList.remove("mobile-nav-open");
         };
     }, [mobileOpen]);
 
@@ -193,15 +195,19 @@ const MenuBlock: React.FC<MenuBlockProps> = ({ mobileOpen = false, toggleMobileM
                     <>
                         {mobileOpen && (
                             <div
-                                className="fixed inset-0 z-[10050] bg-black/60 lg:hidden"
+                                className="fixed inset-0 z-[11000] bg-black/60 lg:hidden"
                                 aria-hidden
                                 onClick={() => toggleMobileMenu?.()}
                             />
                         )}
                         <div
-                            className={`fixed top-0 left-0 z-[10051] flex h-full w-72 flex-col bg-white shadow-xl transition-transform duration-300 ease-out lg:hidden ${
-                                mobileOpen ? 'translate-x-0' : '-translate-x-full'
+                            className={`fixed left-0 z-[11001] flex w-[min(18rem,88vw)] flex-col bg-white shadow-xl transition-transform duration-300 ease-out lg:hidden ${
+                                mobileOpen ? "translate-x-0" : "-translate-x-full"
                             }`}
+                            style={{
+                                top: "var(--maintenance-banner-offset, 0px)",
+                                height: "calc(100dvh - var(--maintenance-banner-offset, 0px))",
+                            }}
                         >
                             <div className="flex items-center justify-between border-b border-gray-200 p-4">
                                 <Link href="/" className="flex items-center" onClick={() => toggleMobileMenu?.()}>

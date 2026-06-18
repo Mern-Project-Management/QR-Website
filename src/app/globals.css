@@ -6,6 +6,27 @@
     --maintenance-banner-offset: 0px;
 }
 
+/* Keep page sliders below the mobile nav drawer when the menu is open */
+body.mobile-nav-open main .splide,
+body.mobile-nav-open main .main-slider,
+body.mobile-nav-open main .google-reviews-slider-wrap,
+body.mobile-nav-open main .vertical-slider {
+    z-index: 0 !important;
+    isolation: isolate;
+}
+
+body.mobile-nav-open .splide__track--fade > .splide__list > .splide__slide {
+    z-index: 0 !important;
+}
+
+body.mobile-nav-open .splide__track--fade > .splide__list > .splide__slide.is-active {
+    z-index: 1 !important;
+}
+
+body.mobile-nav-open .splide__arrow {
+    z-index: 0 !important;
+}
+
 /* Keep site header/logo below the fixed maintenance ticker */
 .header-wrapper.absolute,
 .header-wrapper.fixed,
