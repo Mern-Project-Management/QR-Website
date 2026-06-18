@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 import {
   Loader,
   Moon,
@@ -552,7 +553,7 @@ export default function DashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="pt-24 pb-12 max-w-screen-xl mx-auto px-4 font-dm flex justify-center items-center min-h-[60vh]">
+      <div className={`${PAGE_TOP_PADDING} pb-12 max-w-screen-xl mx-auto px-4 font-dm flex justify-center items-center min-h-[60vh]`}>
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900" />
           <p className="mt-4 text-gray-600 font-medium">Loading...</p>
@@ -563,13 +564,15 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="pt-24 max-w-screen mx-auto font-dm">
-        <PageTitle title="My Dashboard" subtitle="Manage your QR codes and settings">
-          <div className="flex justify-center text-center">
-            <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Dashboard" }]} variant="light" />
-          </div>
-        </PageTitle>
-      </div>
+      <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-4 sm:pb-6 ${PAGE_TOP_PADDING}`}>
+        <div className="max-w-screen mx-auto font-dm">
+          <PageTitle title="My Dashboard" subtitle="Manage your QR codes and settings">
+            <div className="flex justify-center text-center">
+              <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Dashboard" }]} variant="light" />
+            </div>
+          </PageTitle>
+        </div>
+      </section>
 
       <div className="pt-6 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
         {/* Stats */}

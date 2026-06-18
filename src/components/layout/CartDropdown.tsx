@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
 import { ShoppingCart, X, Plus, Minus, Trash2, Tag, Gift } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import { fireCartDiscountCelebration } from "@/lib/cartCelebration";
@@ -36,8 +35,6 @@ export default function CartDropdown() {
         availableOffers,
         refreshDiscountQuote,
     } = useCart();
-
-    const pathname = usePathname();
 
     const cartTotalQty = useMemo(
         () => cart.reduce((sum, item) => sum + item.quantity, 0),
@@ -94,41 +91,6 @@ export default function CartDropdown() {
     }, []);
 
     useEffect(() => {
-        if (!isCartOpen) return;
-
-        const onPointerDown = (e: MouseEvent | TouchEvent) => {
-            const el = containerRef.current;
-            if (!el) return;
-            if (e.target instanceof Node && !el.contains(e.target)) {
-                closeDropdown();
-            }
-        };
-
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") closeDropdown();
-        };
-
-        document.addEventListener("mousedown", onPointerDown);
-        document.addEventListener("touchstart", onPointerDown, { passive: true });
-        document.addEventListener("keydown", onKeyDown);
-        return () => {
-            document.removeEventListener("mousedown", onPointerDown);
-            document.removeEventListener("touchstart", onPointerDown);
-            document.removeEventListener("keydown", onKeyDown);
-        };
-    }, [isCartOpen]);
-
-    useEffect(() => {
-        closeCart();
-        setShowCelebration(false);
-        setCelebrationMessage(null);
-        if (autoCloseTimerRef.current) {
-            clearTimeout(autoCloseTimerRef.current);
-            autoCloseTimerRef.current = null;
-        }
-    }, [pathname, closeCart]);
-
-    useEffect(() => {
         if (cartOpenSignal === prevCartOpenSignalRef.current) return;
         prevCartOpenSignalRef.current = cartOpenSignal;
         if (cartOpenSignal === 0) return;
@@ -150,6 +112,10 @@ export default function CartDropdown() {
         if (!isCartOpen) {
             setShowCelebration(false);
             setCelebrationMessage(null);
+            if (autoCloseTimerRef.current) {
+                clearTimeout(autoCloseTimerRef.current);
+                autoCloseTimerRef.current = null;
+            }
         }
     }, [isCartOpen]);
 
@@ -211,6 +177,7 @@ export default function CartDropdown() {
         mounted && isCartOpen && celebrationBanner
             ? createPortal(
                   <div
+                      data-cart-celebration
                       className="pointer-events-none fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] z-[10101] sm:hidden"
                       aria-live="polite"
                   >
@@ -303,7 +270,7 @@ export default function CartDropdown() {
     };
 
     return (
-        <div ref={containerRef} className="relative shrink-0">
+        <div ref={containerRef} data-cart-dropdown-root className="relative shrink-0">
             {mobileCelebrationToast}
             <style>{`
                 @keyframes pulse-soft {
@@ -334,6 +301,7 @@ export default function CartDropdown() {
                 <div
                     role="dialog"
                     aria-label="Cart"
+                    data-cart-dropdown-panel
                     className={`fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none ${
                         showCelebration && celebrationMessage
                             ? "top-[calc(4.25rem+var(--maintenance-banner-offset,0px)+5.25rem)] sm:top-auto"
@@ -426,7 +394,7 @@ export default function CartDropdown() {
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => addToCart(item.product, 1, { openCart: true })}
+                                                        onClick={() => addToCart(item.product, 1)}
                                                         className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition active:scale-95 shrink-0"
                                                         aria-label="Increase quantity"
                                                     >
