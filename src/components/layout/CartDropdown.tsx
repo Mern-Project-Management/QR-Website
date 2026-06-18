@@ -4,6 +4,7 @@ import { useCart } from "@/components/providers/CartProvider";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ShoppingCart, X, Plus, Minus, Trash2, Tag, Gift } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import { fireCartDiscountCelebration } from "@/lib/cartCelebration";
@@ -68,6 +69,7 @@ export default function CartDropdown() {
     const [isOpen, setIsOpen] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
     const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevCartOpenRequestIdRef = useRef(0);
@@ -81,6 +83,10 @@ export default function CartDropdown() {
         if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
         autoCloseTimerRef.current = setTimeout(() => setIsOpen(false), ms);
     };
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -171,6 +177,36 @@ export default function CartDropdown() {
         autoDiscountOffers,
     ]);
 
+    const celebrationBanner =
+        showCelebration && celebrationMessage ? (
+            <div
+                className="border-b border-emerald-200 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 px-4 py-3 text-white shadow-lg shadow-emerald-900/20 animate-[celebrate-pop_0.35s_ease-out]"
+                role="status"
+            >
+                <p className="text-sm font-extrabold tracking-tight">
+                    🎉 Hurray! You&apos;re eligible for the discount!
+                </p>
+                <p className="mt-1 text-xs font-medium text-emerald-50 leading-snug">
+                    {celebrationMessage}
+                </p>
+            </div>
+        ) : null;
+
+    const mobileCelebrationToast =
+        mounted && isOpen && celebrationBanner
+            ? createPortal(
+                  <div
+                      className="pointer-events-none fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] z-[10101] sm:hidden"
+                      aria-live="polite"
+                  >
+                      <div className="overflow-hidden rounded-2xl border border-emerald-300/80">
+                          {celebrationBanner}
+                      </div>
+                  </div>,
+                  document.body
+              )
+            : null;
+
     const renderPendingOfferCard = (offer: AvailableDiscountOffer) => (
         <div
             key={offer.ruleId}
@@ -253,6 +289,7 @@ export default function CartDropdown() {
 
     return (
         <div ref={containerRef} className="relative shrink-0">
+            {mobileCelebrationToast}
             <style>{`
                 @keyframes pulse-soft {
                     0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.25); }
@@ -282,20 +319,14 @@ export default function CartDropdown() {
                 <div
                     role="dialog"
                     aria-label="Cart"
-                    className="fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none"
+                    className={`fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none ${
+                        showCelebration && celebrationMessage
+                            ? "top-[calc(4.25rem+var(--maintenance-banner-offset,0px)+5.25rem)] sm:top-auto"
+                            : "top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:top-auto"
+                    }`}
                 >
-                    {showCelebration && celebrationMessage ? (
-                        <div
-                            className="shrink-0 border-b border-emerald-200 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 px-4 py-3 text-white animate-[celebrate-pop_0.35s_ease-out]"
-                            role="status"
-                        >
-                            <p className="text-sm font-extrabold tracking-tight">
-                                🎉 Hurray! You&apos;re eligible for the discount!
-                            </p>
-                            <p className="mt-1 text-xs font-medium text-emerald-50 leading-snug">
-                                {celebrationMessage}
-                            </p>
-                        </div>
+                    {celebrationBanner ? (
+                        <div className="hidden shrink-0 sm:block">{celebrationBanner}</div>
                     ) : null}
 
                     <div className="flex items-center justify-between px-4 sm:px-4.5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/50 shrink-0">
