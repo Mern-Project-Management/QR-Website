@@ -43,16 +43,16 @@ const fallbackReviews: DisplayReview[] = [
 
 function ReviewCard({ item }: { item: DisplayReview }) {
   return (
-    <div className="flex h-full min-h-[220px] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:min-h-[240px] lg:p-7">
+    <div className="flex h-full w-full flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 lg:min-h-[240px] lg:p-7">
       <div className="mb-3 flex items-center gap-0.5 text-brand-primary">
         {Array.from({ length: item.rating }).map((_, starIndex) => (
           <Star key={starIndex} size={16} fill="currentColor" />
         ))}
       </div>
-      <p className="line-clamp-5 flex-1 text-[15px] leading-7 text-gray-600 lg:text-base">
+      <p className="text-[15px] leading-relaxed text-gray-600 sm:line-clamp-5 lg:text-base">
         {item.review}
       </p>
-      <p className="mt-5 font-semibold text-gray-900">{item.name}</p>
+      <p className="mt-4 font-semibold text-gray-900">{item.name}</p>
     </div>
   );
 }
@@ -87,6 +87,7 @@ function AverageStars({ value, size = 20 }: { value: number; size?: number }) {
 export default function GoogleReviewSection() {
   const [reviews, setReviews] = useState<GoogleReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
@@ -121,6 +122,10 @@ export default function GoogleReviewSection() {
 
   useEffect(() => {
     fetchGoogleReviews();
+  }, []);
+
+  useEffect(() => {
+    setIsClient(true);
   }, []);
 
   const submitReview = async () => {
@@ -194,16 +199,17 @@ export default function GoogleReviewSection() {
   }, [displayReviews]);
 
   const sliderItems = loading ? fallbackReviews : displayReviews;
-  const enableLoop = sliderItems.length > 3;
   const showControls = sliderItems.length > 1;
+  const enableLoop = sliderItems.length > 3;
 
   const splideOptions = useMemo(
     () => ({
       type: enableLoop ? ("loop" as const) : ("slide" as const),
-      // Desktop first: 3 cards on large screens, then step down via max-width breakpoints
-      perPage: Math.min(3, sliderItems.length),
+      // Mobile-first: 1 card on small screens, scale up with min-width breakpoints
+      perPage: 1,
       perMove: 1,
-      gap: "1.5rem",
+      gap: "1rem",
+      width: "100%",
       arrows: showControls,
       pagination: showControls,
       autoplay: showControls,
@@ -211,14 +217,16 @@ export default function GoogleReviewSection() {
       pauseOnHover: true,
       pauseOnFocus: true,
       drag: true,
+      trimSpace: true,
+      mediaQuery: "min" as const,
       breakpoints: {
-        1023: {
+        640: {
           perPage: Math.min(2, sliderItems.length),
           gap: "1.25rem",
         },
-        639: {
-          perPage: 1,
-          gap: "1rem",
+        1024: {
+          perPage: Math.min(3, sliderItems.length),
+          gap: "1.5rem",
         },
       },
     }),
@@ -256,22 +264,54 @@ export default function GoogleReviewSection() {
           </div>
         </div>
 
-        <div className="google-reviews-slider-wrap px-0 sm:px-2 lg:px-4">
+        <div className="google-reviews-slider-wrap mx-auto w-full max-w-full overflow-hidden px-0 sm:px-2 lg:max-w-none lg:px-4">
           <style>{`
-            .google-reviews-slider .splide__slide { height: auto; }
-            .google-reviews-slider .splide__list { align-items: stretch; }
+            .google-reviews-slider.splide {
+              max-width: 100%;
+            }
+            .google-reviews-slider .splide__track {
+              overflow: hidden;
+            }
+            .google-reviews-slider .splide__list {
+              align-items: stretch;
+            }
+            .google-reviews-slider .splide__slide {
+              height: auto;
+              box-sizing: border-box;
+            }
+            .google-reviews-slider .splide__slide > * {
+              width: 100%;
+            }
+            @media (max-width: 639px) {
+              .google-reviews-slider {
+                padding-bottom: 2.5rem;
+              }
+              .google-reviews-slider .splide__pagination {
+                position: relative;
+                bottom: auto;
+                margin-top: 1rem;
+                padding-top: 0.25rem;
+              }
+            }
           `}</style>
-          <Splide
-            aria-label="Customer reviews carousel"
-            options={splideOptions}
-            className="google-reviews-slider slider-arrows-outside slider-arrows-white slider-dots-round splide-pagination-bottom pb-12"
-          >
-            {sliderItems.map((item, index) => (
-              <SplideSlide key={`review-${item.name}-${index}`}>
-                <ReviewCard item={item} />
-              </SplideSlide>
-            ))}
-          </Splide>
+          {!isClient ? (
+            <div className="mx-auto w-full max-w-md px-1">
+              <ReviewCard item={sliderItems[0]} />
+            </div>
+          ) : (
+            <Splide
+              key={`reviews-slider-${sliderItems.length}-${loading ? "loading" : "ready"}`}
+              aria-label="Customer reviews carousel"
+              options={splideOptions}
+              className="google-reviews-slider slider-arrows-outside slider-arrows-white slider-dots-round splide-pagination-bottom pb-8 sm:pb-12"
+            >
+              {sliderItems.map((item, index) => (
+                <SplideSlide key={`review-${item.name}-${index}`}>
+                  <ReviewCard item={item} />
+                </SplideSlide>
+              ))}
+            </Splide>
+          )}
         </div>
 
         <div className="mt-8 flex justify-center lg:mt-10">
