@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { ShoppingCart, X, Plus, Minus, Trash2, Tag, Gift } from "react-feather";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import { fireCartDiscountCelebration } from "@/lib/cartCelebration";
@@ -28,10 +29,15 @@ export default function CartDropdown() {
         cartDiscount,
         cartTotal,
         discountLoading,
-        cartOpenRequestId,
+        cartOpenSignal,
+        isCartOpen,
+        setIsCartOpen,
+        closeCart,
         availableOffers,
         refreshDiscountQuote,
     } = useCart();
+
+    const pathname = usePathname();
 
     const cartTotalQty = useMemo(
         () => cart.reduce((sum, item) => sum + item.quantity, 0),
@@ -66,22 +72,21 @@ export default function CartDropdown() {
         eligibleAutoOffers.length > 0 ||
         cartDiscount > 0;
 
-    const [isOpen, setIsOpen] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
     const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const prevCartOpenRequestIdRef = useRef(0);
+    const prevCartOpenSignalRef = useRef(0);
     const prevEligibilityRef = useRef<Map<string, boolean>>(new Map());
     const eligibilityInitializedRef = useRef(false);
 
-    const toggleDropdown = () => setIsOpen(!isOpen);
-    const closeDropdown = () => setIsOpen(false);
+    const toggleDropdown = () => setIsCartOpen(!isCartOpen);
+    const closeDropdown = () => closeCart();
 
     const extendAutoClose = (ms: number) => {
         if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-        autoCloseTimerRef.current = setTimeout(() => setIsOpen(false), ms);
+        autoCloseTimerRef.current = setTimeout(() => closeCart(), ms);
     };
 
     useEffect(() => {
@@ -89,7 +94,7 @@ export default function CartDropdown() {
     }, []);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isCartOpen) return;
 
         const onPointerDown = (e: MouseEvent | TouchEvent) => {
             const el = containerRef.current;
@@ -111,35 +116,45 @@ export default function CartDropdown() {
             document.removeEventListener("touchstart", onPointerDown);
             document.removeEventListener("keydown", onKeyDown);
         };
-    }, [isOpen]);
+    }, [isCartOpen]);
 
     useEffect(() => {
-        if (cartOpenRequestId === prevCartOpenRequestIdRef.current) return;
-        prevCartOpenRequestIdRef.current = cartOpenRequestId;
+        closeCart();
+        setShowCelebration(false);
+        setCelebrationMessage(null);
+        if (autoCloseTimerRef.current) {
+            clearTimeout(autoCloseTimerRef.current);
+            autoCloseTimerRef.current = null;
+        }
+    }, [pathname, closeCart]);
 
-        setIsOpen(true);
+    useEffect(() => {
+        if (cartOpenSignal === prevCartOpenSignalRef.current) return;
+        prevCartOpenSignalRef.current = cartOpenSignal;
+        if (cartOpenSignal === 0) return;
+
         extendAutoClose(5000);
 
         return () => {
             if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
         };
-    }, [cartOpenRequestId]);
+    }, [cartOpenSignal]);
 
     useEffect(() => {
-        if (isOpen && cart.length > 0) {
+        if (isCartOpen && cart.length > 0) {
             refreshDiscountQuote();
         }
-    }, [isOpen, cart.length, refreshDiscountQuote]);
+    }, [isCartOpen, cart.length, refreshDiscountQuote]);
 
     useEffect(() => {
-        if (!isOpen) {
+        if (!isCartOpen) {
             setShowCelebration(false);
             setCelebrationMessage(null);
         }
-    }, [isOpen]);
+    }, [isCartOpen]);
 
     useEffect(() => {
-        if (discountLoading || !isOpen) return;
+        if (discountLoading || !isCartOpen) return;
 
         const byKey = new Map<string, AvailableDiscountOffer>();
         for (const offer of [...eligibleCouponOffers, ...pendingCouponOffers, ...autoDiscountOffers]) {
@@ -171,7 +186,7 @@ export default function CartDropdown() {
     }, [
         availableOffers,
         discountLoading,
-        isOpen,
+        isCartOpen,
         eligibleCouponOffers,
         pendingCouponOffers,
         autoDiscountOffers,
@@ -193,7 +208,7 @@ export default function CartDropdown() {
         ) : null;
 
     const mobileCelebrationToast =
-        mounted && isOpen && celebrationBanner
+        mounted && isCartOpen && celebrationBanner
             ? createPortal(
                   <div
                       className="pointer-events-none fixed left-2 right-2 top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] z-[10101] sm:hidden"
@@ -305,7 +320,7 @@ export default function CartDropdown() {
                 onClick={toggleDropdown}
                 className="tap-target relative inline-flex items-center justify-center rounded-lg p-2.5 text-gray-700 transition hover:bg-gray-100 hover:text-blue-600 active:scale-95"
                 aria-haspopup="dialog"
-                aria-expanded={isOpen}
+                aria-expanded={isCartOpen}
             >
                 <ShoppingCart size={22} />
                 {cart.length > 0 && (
@@ -315,7 +330,7 @@ export default function CartDropdown() {
                 )}
             </button>
 
-            {isOpen && (
+            {isCartOpen && (
                 <div
                     role="dialog"
                     aria-label="Cart"
@@ -481,7 +496,7 @@ export default function CartDropdown() {
                                     </span>
                                 </div>
                                 <Link
-                                    onClick={() => setIsOpen(false)}
+                                    onClick={() => closeCart()}
                                     href="/checkout"
                                     className="mt-3 sm:mt-3.5 block text-center w-full bg-blue-900 hover:bg-blue-800 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/10 hover:shadow-blue-900/20 transition-all active:scale-[0.98]"
                                 >

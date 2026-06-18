@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import ProductCard from "@/components/ui/ProductCard";
 import { Product as BaseProduct } from "@/const/productData";
 import { fetchProductsEnriched } from "@/lib/fetchProductsClient";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 
 interface Product extends BaseProduct {
     categoryNames?: string[];
@@ -110,15 +111,15 @@ function ShopContent() {
 
     return (
         <>
-            <div className=" max-w-screen mx-auto font-dm">
-                {/* Page Title */}
-                <PageTitle title="Shop" subtitle="">
-                    {/* Breadcrumb */}
-                    <div className="flex justify-center text-center">
-                        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Shop" }]} variant="light" />
-                    </div>
-                </PageTitle>
-            </div>
+            <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-4 sm:pb-6 ${PAGE_TOP_PADDING}`}>
+                <div className="max-w-screen mx-auto font-dm">
+                    <PageTitle title="Shop" subtitle="">
+                        <div className="flex justify-center text-center">
+                            <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Shop" }]} variant="light" />
+                        </div>
+                    </PageTitle>
+                </div>
+            </section>
             <div className="shop-wrap font-dm pt-6 lg:pt-8">
                 <div className="max-w-screen-xl mx-auto px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 lg:pb-24 pb-12">
                     <div className="grid lg:grid-cols-4 grid-cols-1 lg:gap-8 gap-6 relative">
