@@ -111,6 +111,35 @@ function field(
     );
 }
 
+type IdentifierKind = "email" | "phone";
+
+function detectIdentifierKind(raw: string): IdentifierKind | null {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    return trimmed.includes("@") ? "email" : "phone";
+}
+
+function normalizeLoginIdentifier(raw: string): { value: string; kind: IdentifierKind | null } {
+    const kind = detectIdentifierKind(raw);
+    if (kind === "email") {
+        return { value: raw.trim().toLowerCase(), kind: "email" };
+    }
+    if (kind === "phone") {
+        return { value: raw.replace(/\D/g, "").slice(0, 15), kind: "phone" };
+    }
+    return { value: "", kind: null };
+}
+
+function validateLoginIdentifier(value: string, kind: IdentifierKind | null): string | null {
+    if (!value || !kind) return "Email or mobile number is required";
+    if (kind === "email") {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Enter a valid email address";
+        return null;
+    }
+    if (!/^\d{8,15}$/.test(value)) return "Enter a valid mobile number (8–15 digits)";
+    return null;
+}
+
 /* ─────────────────────────────────────────────
    Main Content
 ───────────────────────────────────────────── */
@@ -120,7 +149,7 @@ function LoginContent() {
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState<null | 'send' | 'verify' | 'resend'>(null);
     const [showOtpInput, setShowOtpInput] = useState(false);
-    const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
+    const [identifierKind, setIdentifierKind] = useState<IdentifierKind | null>(null);
     const [formData, setFormData] = useState({ identifier: '', otp: '' });
     const [error, setError] = useState<string>('');
     const [info, setInfo] = useState<string>('');
@@ -155,22 +184,11 @@ function LoginContent() {
         return () => clearInterval(t);
     }, [resendIn]);
 
-    const normalizedIdentifier = (() => {
-        const raw = formData.identifier.trim();
-        if (authMode === 'email') return raw.toLowerCase();
-        return raw.replace(/\D/g, '').slice(0, 15);
-    })();
+    const { value: normalizedIdentifier, kind: resolvedIdentifierKind } = normalizeLoginIdentifier(formData.identifier);
+    const activeIdentifierKind = identifierKind ?? resolvedIdentifierKind;
 
-    const validateIdentifier = (): string | null => {
-        if (!normalizedIdentifier) return 'Email or mobile number is required';
-        if (authMode === 'email') {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) return 'Enter a valid email address';
-            return null;
-        }
-        // phone
-        if (!/^\d{8,15}$/.test(normalizedIdentifier)) return 'Enter a valid mobile number (8–15 digits)';
-        return null;
-    };
+    const validateIdentifier = (): string | null =>
+        validateLoginIdentifier(normalizedIdentifier, resolvedIdentifierKind);
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -191,6 +209,7 @@ function LoginContent() {
             const text = await res.text();
             const data = (() => { try { return JSON.parse(text); } catch { return null; } })();
             if (res.ok) {
+                setIdentifierKind(resolvedIdentifierKind);
                 setShowOtpInput(true);
                 setResendIn(60);
                 setInfo((data && data.message) || 'OTP sent successfully.');
@@ -362,12 +381,12 @@ function LoginContent() {
                                 Welcome back —<br />glad to see you!
                             </h2>
                             <p className="mx-auto max-w-[270px] text-sm leading-relaxed text-white/40">
-                                Sign in securely with your email and a one-time code.
+                                Sign in securely with your email or mobile number and a one-time code.
                             </p>
                         </div>
 
                         {/* Social proof */}
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3">
+                        {/* <div className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3">
                             <div className="flex">
                                 {[
                                     { bg: 'bg-blue-400', letter: 'A' },
@@ -387,7 +406,7 @@ function LoginContent() {
                                 <p className="text-xs font-semibold text-white">12,000+ members</p>
                                 <p className="text-[10px] text-white/35">growing every day</p>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
@@ -424,14 +443,16 @@ function LoginContent() {
                     {/* Heading */}
                     <div className="mb-7">
                         <h1 className="font-display text-3xl font-extrabold text-gray-900 dark:text-white mb-1.5">
-                            {showOtpInput ? 'Check your inbox' : 'Sign in'}
+                            {showOtpInput
+                                ? activeIdentifierKind === "phone"
+                                    ? "Check your phone"
+                                    : "Check your inbox"
+                                : "Sign in"}
                         </h1>
                         <p className="text-gray-500 dark:text-white/40 text-sm">
                             {showOtpInput
-                                ? `Enter the 6-digit code sent to ${normalizedIdentifier || 'you'}`
-                                : authMode === 'email'
-                                  ? 'Enter your email address to receive a one-time code'
-                                  : 'Enter your mobile number to receive a one-time code'}
+                                ? `Enter the 6-digit code sent to ${normalizedIdentifier || "you"}`
+                                : "Enter your email or mobile number to receive a one-time code"}
                         </p>
                     </div>
 
@@ -444,40 +465,14 @@ function LoginContent() {
                     {/* ── EMAIL FORM ── */}
                     {!showOtpInput ? (
                         <form onSubmit={handleSendOtp} className="space-y-4">
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => { setAuthMode('email'); setError(''); setInfo(''); }}
-                                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest border transition ${
-                                        authMode === 'email'
-                                            ? 'bg-blue-900 text-white border-blue-900'
-                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    Email
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setAuthMode('phone'); setError(''); setInfo(''); }}
-                                    className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest border transition ${
-                                        authMode === 'phone'
-                                            ? 'bg-blue-900 text-white border-blue-900'
-                                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    Mobile
-                                </button>
-                            </div>
                             {field(
                                 "identifier",
-                                authMode === 'email' ? "Email Address" : "Mobile Number",
-                                authMode === 'email' ? "email" : "tel",
-                                authMode === 'email' ? "you@example.com" : "Enter mobile number",
+                                "Email or mobile number",
+                                "text",
+                                "you@example.com or 9876543210",
                                 formData.identifier,
-                                (v) => setFormData({ ...formData, identifier: authMode === 'phone' ? v.replace(/\\D/g, '').slice(0, 15) : v }),
-                                authMode === 'phone'
-                                    ? { required: true, inputMode: 'numeric', autoComplete: 'tel' }
-                                    : { required: true, autoComplete: 'email' }
+                                (v) => setFormData({ ...formData, identifier: v }),
+                                { required: true, autoComplete: "username", inputMode: "text" }
                             )}
 
                             <button
@@ -501,8 +496,8 @@ function LoginContent() {
                                     </svg>
                                 </div>
                                 <p className="text-blue-900 dark:text-blue-300 text-sm leading-relaxed">
-                                    Check {authMode === 'email' ? 'your inbox' : 'your phone'} at{' '}
-                                    <strong className="text-blue-700 dark:text-blue-200">{normalizedIdentifier}</strong>{' '}
+                                    Check {activeIdentifierKind === "phone" ? "your phone" : "your inbox"} at{" "}
+                                    <strong className="text-blue-700 dark:text-blue-200">{normalizedIdentifier}</strong>{" "}
                                     for your one-time code.
                                     <br />
                                     <span className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1 block">
@@ -539,7 +534,7 @@ function LoginContent() {
                                     className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold transition disabled:opacity-50 text-xs">
                                     {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
                                 </button>
-                                <button type="button" onClick={() => { setShowOtpInput(false); setFormData({ ...formData, otp: '' }); setError(''); setInfo(''); }}
+                                <button type="button" onClick={() => { setShowOtpInput(false); setIdentifierKind(null); setFormData({ ...formData, otp: '' }); setError(''); setInfo(''); }}
                                     className="text-gray-500 dark:text-white/30 hover:text-gray-800 dark:hover:text-white/60 font-medium transition text-xs">
                                     ← Back
                                 </button>

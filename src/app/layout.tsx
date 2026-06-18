@@ -29,7 +29,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${sora.variable} overflow-x-hidden`}>
-      <body className="overflow-x-hidden bg-white text-gray-900 font-sans antialiased selection:bg-brand-primary/15 selection:text-gray-900">
+      <body className="overflow-x-hidden bg-white text-gray-900 font-sans antialiased">
         <MaintenanceBanner />
         <ForceLightTheme />
         <SessionProviderWrapper>

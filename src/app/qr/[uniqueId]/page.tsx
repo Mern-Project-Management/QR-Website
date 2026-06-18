@@ -774,11 +774,15 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
     e.preventDefault();
     setError("");
 
-    if (!emergency1.trim() || !emergency2.trim()) {
-      setError("Please enter both emergency contact numbers.");
+    if (!emergency1.trim()) {
+      setError("Please enter at least one emergency contact number.");
       return;
     }
-    if (emergency1.replace(/\D/g, "") === emergency2.replace(/\D/g, "")) {
+    if (
+      emergency1.trim() &&
+      emergency2.trim() &&
+      emergency1.replace(/\D/g, "") === emergency2.replace(/\D/g, "")
+    ) {
       setError("Emergency Contact 1 and 2 must be different numbers.");
       return;
     }
@@ -791,7 +795,7 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
         phone: phone.trim(),
         email: email.trim() || undefined,
         address: address.trim() || undefined,
-        emergencyPhones: [emergency1.trim(), emergency2.trim()],
+        emergencyPhones: [emergency1.trim(), emergency2.trim()].filter(Boolean),
       };
 
       if (isVehicle) {
@@ -1053,7 +1057,7 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
         <FormSection
           icon={<AlertCircle className="h-5 w-5" />}
           title="Emergency contacts"
-          description="Two different numbers we alert in urgent situations."
+          description="At least one number we alert in urgent situations. Add a second if you like."
         >
           <div className="space-y-4">
             <div>
@@ -1061,8 +1065,10 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
               <PhoneInput value={emergency1} onChange={setEmergency1} required placeholder="Primary emergency" />
             </div>
             <div>
-              <label className={LABEL}>Contact 2</label>
-              <PhoneInput value={emergency2} onChange={setEmergency2} required placeholder="Secondary emergency" />
+              <label className={LABEL}>
+                Contact 2 <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <PhoneInput value={emergency2} onChange={setEmergency2} placeholder="Secondary emergency" />
             </div>
           </div>
         </FormSection>
@@ -1093,15 +1099,17 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
 
   const display = useMemo(() => buildContactDisplay(data), [data]);
   const contactReasons = useMemo(() => getContactReasons(display.category), [display.category]);
-  const [selectedReason, setSelectedReason] = useState(contactReasons[0]?.value ?? "GENERAL");
+  const [selectedReasonLabel, setSelectedReasonLabel] = useState(
+    contactReasons[0]?.label ?? "General",
+  );
 
   useEffect(() => {
     const list = getContactReasons(display.category);
-    setSelectedReason(list[0]?.value ?? "GENERAL");
+    setSelectedReasonLabel(list[0]?.label ?? "General");
   }, [display.category]);
 
-  const selectedReasonLabel =
-    contactReasons.find((r) => r.value === selectedReason)?.label ?? selectedReason;
+  const selectedReason =
+    contactReasons.find((r) => r.label === selectedReasonLabel)?.value ?? "GENERAL";
 
   const isVehicle = isVehicleFormCategory(display.category);
   const categoryAccent = getCategoryAccentClasses(display.category);
@@ -1219,12 +1227,12 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
         </p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Contact reason">
           {contactReasons.map((r) => {
-            const selected = selectedReason === r.value;
+            const selected = selectedReasonLabel === r.label;
             return (
               <button
-                key={`${r.value}-${r.label}`}
+                key={r.label}
                 type="button"
-                onClick={() => setSelectedReason(r.value)}
+                onClick={() => setSelectedReasonLabel(r.label)}
                 aria-pressed={selected}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
                   selected

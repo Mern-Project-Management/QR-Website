@@ -43,14 +43,16 @@ const fallbackReviews: DisplayReview[] = [
 
 function ReviewCard({ item }: { item: DisplayReview }) {
   return (
-    <div className="h-full min-h-[220px] rounded-xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
-      <div className="mb-3 flex items-center gap-1 text-brand-primary">
+    <div className="flex h-full min-h-[220px] flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:min-h-[240px] lg:p-7">
+      <div className="mb-3 flex items-center gap-0.5 text-brand-primary">
         {Array.from({ length: item.rating }).map((_, starIndex) => (
           <Star key={starIndex} size={16} fill="currentColor" />
         ))}
       </div>
-      <p className="line-clamp-5 text-gray-700 dark:text-gray-200 leading-7">{item.review}</p>
-      <p className="mt-4 font-semibold text-gray-900 dark:text-white">{item.name}</p>
+      <p className="line-clamp-5 flex-1 text-[15px] leading-7 text-gray-600 lg:text-base">
+        {item.review}
+      </p>
+      <p className="mt-5 font-semibold text-gray-900">{item.name}</p>
     </div>
   );
 }
@@ -72,7 +74,7 @@ function AverageStars({ value, size = 20 }: { value: number; size?: number }) {
                 ? "fill-brand-primary text-brand-primary"
                 : half
                   ? "fill-brand-primary/40 text-brand-primary"
-                  : "text-gray-300 dark:text-gray-600"
+                  : "text-gray-300"
             }
             fill={filled ? "currentColor" : "none"}
           />
@@ -193,19 +195,48 @@ export default function GoogleReviewSection() {
 
   const sliderItems = loading ? fallbackReviews : displayReviews;
   const enableLoop = sliderItems.length > 3;
+  const showControls = sliderItems.length > 1;
+
+  const splideOptions = useMemo(
+    () => ({
+      type: enableLoop ? ("loop" as const) : ("slide" as const),
+      // Desktop first: 3 cards on large screens, then step down via max-width breakpoints
+      perPage: Math.min(3, sliderItems.length),
+      perMove: 1,
+      gap: "1.5rem",
+      arrows: showControls,
+      pagination: showControls,
+      autoplay: showControls,
+      interval: 5000,
+      pauseOnHover: true,
+      pauseOnFocus: true,
+      drag: true,
+      breakpoints: {
+        1023: {
+          perPage: Math.min(2, sliderItems.length),
+          gap: "1.25rem",
+        },
+        639: {
+          perPage: 1,
+          gap: "1rem",
+        },
+      },
+    }),
+    [enableLoop, showControls, sliderItems.length],
+  );
 
   return (
-    <section className="bg-white py-12 dark:bg-gray-900 lg:py-16">
+    <section className="bg-white py-12 font-dm lg:py-16">
       <div className="mx-auto max-w-screen-xl px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
         <div className="mb-10 flex flex-col items-center text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-brand-secondary px-4 py-2 text-sm font-medium text-brand-primary bg-white dark:bg-gray-800">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-secondary bg-white px-4 py-2 text-sm font-medium text-brand-primary">
             <Star size={14} fill="currentColor" />
-             Reviews
+            Reviews
           </span>
-          <h2 className="mt-4 text-3xl md:text-4xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="mt-4 text-3xl font-semibold text-gray-900 md:text-4xl">
             Loved by our customers
           </h2>
-          <p className="mt-3 text-gray-600 dark:text-gray-300 max-w-2xl">
+          <p className="mt-3 max-w-2xl text-base text-gray-600">
             Real feedback from users who trust our QR safety solutions for vehicles, pets, and valuables.
           </p>
 
@@ -214,52 +245,36 @@ export default function GoogleReviewSection() {
             aria-label={`Average rating ${averageLabel} out of 5 from ${reviewCount} reviews`}
           >
             <AverageStars value={averageRating} size={22} />
-            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center sm:text-left">
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{averageLabel}</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">out of 5</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:text-left">
+              <span className="text-2xl font-bold text-gray-900">{averageLabel}</span>
+              <span className="text-sm text-gray-500">out of 5</span>
               <span className="hidden text-gray-400 sm:inline">·</span>
-              {/* <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <span className="text-sm font-medium text-gray-600">
                 {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
-              </span> */}
+              </span>
             </div>
           </div>
         </div>
 
-        <Splide
-          aria-label="Customer reviews carousel"
-          options={{
-            type: enableLoop ? "loop" : "slide",
-            perPage: 1,
-            perMove: 1,
-            gap: "1.25rem",
-            arrows: sliderItems.length > 1,
-            pagination: sliderItems.length > 1,
-            autoplay: sliderItems.length > 1,
-            interval: 5000,
-            pauseOnHover: true,
-            pauseOnFocus: true,
-            drag: true,
-            breakpoints: {
-              640: {
-                perPage: Math.min(2, sliderItems.length),
-                gap: "1.5rem",
-              },
-              1024: {
-                perPage: Math.min(3, sliderItems.length),
-                gap: "1.75rem",
-              },
-            },
-          }}
-          className="google-reviews-slider slider-arrows-outside slider-arrows-white slider-dots-round splide-pagination-bottom pb-10"
-        >
-          {sliderItems.map((item, index) => (
-            <SplideSlide key={`review-${item.name}-${index}`}>
-              <ReviewCard item={item} />
-            </SplideSlide>
-          ))}
-        </Splide>
+        <div className="google-reviews-slider-wrap px-0 sm:px-2 lg:px-4">
+          <style>{`
+            .google-reviews-slider .splide__slide { height: auto; }
+            .google-reviews-slider .splide__list { align-items: stretch; }
+          `}</style>
+          <Splide
+            aria-label="Customer reviews carousel"
+            options={splideOptions}
+            className="google-reviews-slider slider-arrows-outside slider-arrows-white slider-dots-round splide-pagination-bottom pb-12"
+          >
+            {sliderItems.map((item, index) => (
+              <SplideSlide key={`review-${item.name}-${index}`}>
+                <ReviewCard item={item} />
+              </SplideSlide>
+            ))}
+          </Splide>
+        </div>
 
-        <div className="mt-12 flex justify-center">
+        <div className="mt-8 flex justify-center lg:mt-10">
           <button
             type="button"
             onClick={() => {
@@ -337,8 +352,11 @@ export default function GoogleReviewSection() {
 
               {(submitError || submitSuccess) && (
                 <div
-                  className={`rounded-xl border px-4 py-3 text-sm ${submitError ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"
-                    }`}
+                  className={`rounded-xl border px-4 py-3 text-sm ${
+                    submitError
+                      ? "border-red-200 bg-red-50 text-red-700"
+                      : "border-green-200 bg-green-50 text-green-700"
+                  }`}
                 >
                   {submitError || submitSuccess}
                 </div>
