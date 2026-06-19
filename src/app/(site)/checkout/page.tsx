@@ -77,6 +77,8 @@ const EMPTY_ADDRESS = {
 const CHECKOUT_INPUT =
   "box-border w-full min-w-0 max-w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white";
 
+const ADDRESS_TEXT = "break-all [overflow-wrap:anywhere] min-w-0 max-w-full";
+
 const CHECKOUT_SESSION_STORAGE_KEY = 'checkoutSessionId';
 
 function newCheckoutSessionId(): string {
@@ -1061,14 +1063,14 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => setSavedAddrDropdownOpen(o => !o)}
-                            className="w-full flex items-center justify-between border-2 border-gray-200 hover:border-blue-300 focus:border-blue-900 focus:outline-none px-4 py-3 rounded-xl bg-white transition-colors text-left"
+                            className="w-full flex items-start justify-between gap-2 border-2 border-gray-200 hover:border-blue-300 focus:border-blue-900 focus:outline-none px-4 py-3 rounded-xl bg-white transition-colors text-left min-w-0"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <MapPin size={16} className="text-blue-700 flex-shrink-0" />
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <MapPin size={16} className="text-blue-700 flex-shrink-0 mt-0.5" />
                               {isNewAddress ? (
                                 <span className="text-gray-600 text-sm">Enter a new address</span>
                               ) : selectedSaved ? (
-                                <span className="text-gray-800 text-sm font-medium truncate">
+                                <span className={`text-gray-800 text-sm font-medium ${ADDRESS_TEXT}`}>
                                   {selectedSaved.label && (
                                     <span className="text-blue-900 font-bold mr-1.5">{selectedSaved.label}:</span>
                                   )}
@@ -1078,7 +1080,7 @@ export default function CheckoutPage() {
                                 <span className="text-gray-400 text-sm">Select a saved address…</span>
                               )}
                             </div>
-                            <ChevronDown size={17} className={`text-gray-400 flex-shrink-0 ml-2 transition-transform duration-200 ${savedAddrDropdownOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={17} className={`text-gray-400 flex-shrink-0 mt-0.5 transition-transform duration-200 ${savedAddrDropdownOpen ? 'rotate-180' : ''}`} />
                           </button>
 
                           {/* Dropdown list */}
@@ -1098,8 +1100,8 @@ export default function CheckoutPage() {
                                     {addr.label && (
                                       <span className="text-xs font-bold text-blue-900 uppercase tracking-wide block mb-0.5">{addr.label}</span>
                                     )}
-                                    <p className="text-sm font-medium text-gray-800 truncate">{addr.street}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">
+                                    <p className={`text-sm font-medium text-gray-800 ${ADDRESS_TEXT}`}>{addr.street}</p>
+                                    <p className={`text-xs text-gray-400 mt-0.5 ${ADDRESS_TEXT}`}>
                                       {normalizeCity(addr.city)}, {normalizeState(addr.state)} — {addr.pincode}
                                     </p>
                                   </div>
@@ -1135,23 +1137,27 @@ export default function CheckoutPage() {
 
                     {/* Summary card (saved address selected) */}
                     {!isNewAddress && selectedSaved && (
-                      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
+                      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 min-w-0 overflow-hidden">
+                        <div className="flex items-start gap-3 min-w-0">
                           <div className="w-9 h-9 bg-blue-900 text-white rounded-lg flex items-center justify-center flex-shrink-0">
                             <MapPin size={15} />
                           </div>
-                          <div className="flex-1 text-sm text-gray-700 leading-relaxed min-w-0">
+                          <div className="flex-1 text-sm text-gray-700 leading-relaxed min-w-0 overflow-hidden">
                             {selectedSaved.label && (
-                              <span className="text-xs font-bold text-blue-900 uppercase tracking-wide block mb-1">{selectedSaved.label}</span>
+                              <span className="text-xs font-bold text-blue-900 uppercase tracking-wide block mb-1 break-words">{selectedSaved.label}</span>
                             )}
-                            <p className="font-medium text-gray-900">{selectedSaved.street}</p>
-                            <p className="text-gray-500">{normalizeCity(selectedSaved.city)}, {normalizeState(selectedSaved.state)}, {selectedSaved.pincode}</p>
-                            {selectedSaved.phone && <p className="text-gray-400 mt-1 text-xs">{selectedSaved.phone}</p>}
+                            <p className={`font-medium text-gray-900 ${ADDRESS_TEXT}`}>{selectedSaved.street}</p>
+                            <p className={`text-gray-500 ${ADDRESS_TEXT}`}>
+                              {normalizeCity(selectedSaved.city)}, {normalizeState(selectedSaved.state)}, {selectedSaved.pincode}
+                            </p>
+                            {selectedSaved.phone && (
+                              <p className={`text-gray-400 mt-1 text-xs ${ADDRESS_TEXT}`}>{selectedSaved.phone}</p>
+                            )}
                           </div>
                           <button
                             type="button"
                             onClick={() => setSavedAddrDropdownOpen(true)}
-                            className="text-xs text-blue-700 font-semibold hover:underline flex-shrink-0 mt-0.5"
+                            className="text-xs text-blue-700 font-semibold hover:underline flex-shrink-0 mt-0.5 whitespace-nowrap"
                           >
                             Change
                           </button>
