@@ -574,46 +574,50 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="pt-6 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
+      <div className="overflow-x-hidden pt-6 pb-20 max-w-screen-xl mx-auto px-3 sm:px-6 lg:px-8 font-dm">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total QR Codes</p>
-              <p className="mt-2 text-3xl font-black text-gray-900">{stats.total}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-8">
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide sm:tracking-widest leading-snug">Total QR Codes</p>
+              <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black text-gray-900">{stats.total}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0">
-              <QrCode size={22} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0 self-end sm:self-auto">
+              <QrCode size={20} className="sm:hidden" />
+              <QrCode size={22} className="hidden sm:block" />
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active QRs</p>
-              <p className="mt-2 text-3xl font-black text-green-600">{stats.active}</p>
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide sm:tracking-widest leading-snug">Active QRs</p>
+              <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black text-green-600">{stats.active}</p>
             </div>
-            <div className="w-12 h-12 bg-green-50 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CheckCircle size={22} className="animate-pulse" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">DND Active</p>
-              <p className="mt-2 text-3xl font-black text-amber-600">{stats.dndActive}</p>
-            </div>
-            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Moon size={22} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-50 text-green-700 rounded-xl flex items-center justify-center flex-shrink-0 self-end sm:self-auto">
+              <CheckCircle size={20} className="animate-pulse sm:hidden" />
+              <CheckCircle size={22} className="animate-pulse hidden sm:block" />
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Scans</p>
-              <p className="mt-2 text-3xl font-black text-blue-900">{stats.totalScans}</p>
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide sm:tracking-widest leading-snug">DND Active</p>
+              <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black text-amber-600">{stats.dndActive}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Scan size={22} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center flex-shrink-0 self-end sm:self-auto">
+              <Moon size={20} className="sm:hidden" />
+              <Moon size={22} className="hidden sm:block" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide sm:tracking-widest leading-snug">Total Scans</p>
+              <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-black text-blue-900">{stats.totalScans}</p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center flex-shrink-0 self-end sm:self-auto">
+              <Scan size={20} className="sm:hidden" />
+              <Scan size={22} className="hidden sm:block" />
             </div>
           </div>
         </div>
@@ -661,16 +665,16 @@ export default function DashboardPage() {
                 className="bg-white rounded-2xl border border-gray-150/85 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200"
               >
                 {/* Card Header */}
-                <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/20">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/20">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
                       <CategoryIcon category={qr.category} categories={categories} size="md" />
-                      <div>
-                        <h3 className="text-base font-extrabold text-gray-900">{qr.assetName}</h3>
-                        <p className="text-xs text-gray-400 mt-1 font-semibold">ID: {qr.uniqueId}</p>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-extrabold text-gray-900 break-words">{qr.assetName}</h3>
+                        <p className="text-xs text-gray-400 mt-1 font-semibold break-all">ID: {qr.uniqueId}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider shadow-sm ${getStatusStyles(
                           qr.status,
@@ -690,13 +694,13 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Card Body */}
-                <div className="px-6 py-5">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80">
+                <div className="px-4 py-4 sm:px-6 sm:py-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                    <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Asset Category</p>
-                      <p className="mt-1 text-sm font-extrabold text-gray-800 uppercase tracking-wide">{qr.category}</p>
+                      <p className="mt-1 text-sm font-extrabold text-gray-800 uppercase tracking-wide break-words">{qr.category}</p>
                     </div>
-                    <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80">
+                    <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scans Count</p>
                       <p className="mt-1 text-sm font-extrabold text-blue-900 flex items-center gap-1.5">
                         <Scan size={14} className="text-blue-600" /> {qr.scans} scans
@@ -752,12 +756,12 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Card Actions */}
-                <div className="px-6 py-4.5 border-t border-gray-100 bg-gray-50/40">
-                  <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="px-4 py-4 sm:px-6 sm:py-4.5 border-t border-gray-100 bg-gray-50/40">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
                     <button
                       type="button"
                       onClick={() => openContactModal(qr)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                       style={{ cursor: "pointer" }}
                     >
                       <Eye size={14} /> View
@@ -765,7 +769,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => openEditContactModal(qr)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                       style={{ cursor: "pointer" }}
                     >
                       <Edit2 size={14} /> Edit
@@ -773,7 +777,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => openDndModal(qr)}
-                      className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
+                      className={`inline-flex w-full sm:w-auto col-span-2 sm:col-span-1 items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
                         qr.isDndActive
                           ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-250/30"
                           : "bg-blue-900 hover:bg-blue-800 text-white border border-blue-900"
@@ -863,6 +867,25 @@ export default function DashboardPage() {
   );
 }
 
+const MODAL_OVERLAY = "fixed inset-0 z-[10060]";
+const MODAL_BACKDROP = "absolute inset-0 bg-black/60";
+const MODAL_SHELL =
+  "absolute inset-0 flex items-end justify-center sm:items-center p-0 sm:p-4 md:p-6 overflow-y-auto overscroll-contain";
+const MODAL_PANEL_LG =
+  "flex max-h-[100dvh] w-full min-w-0 max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:my-6 sm:max-h-[min(92vh,900px)] sm:rounded-2xl";
+const MODAL_PANEL_MD =
+  "flex max-h-[100dvh] w-full min-w-0 max-w-md flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:my-6 sm:max-h-[min(92vh,720px)] sm:rounded-2xl";
+const MODAL_HEADER =
+  "flex shrink-0 flex-col gap-3 border-b border-gray-100 bg-gray-50/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6";
+const MODAL_BODY = "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6";
+const MODAL_FOOTER = "shrink-0 border-t border-gray-100 bg-gray-50/50 px-4 py-4 sm:px-6";
+const MODAL_FOOTER_ACTIONS = "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3";
+const FORM_FIELD = "min-w-0 w-full";
+const FORM_INPUT =
+  "box-border w-full min-w-0 max-w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all";
+const FORM_GRID_2 = "grid grid-cols-1 md:grid-cols-2 gap-4";
+const FORM_GRID_3 = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4";
+
 // Contact Details Modal Component
 function ContactDetailsModal({
   qr,
@@ -880,18 +903,20 @@ function ContactDetailsModal({
   // Handle missing profile data
   if (!profile) {
     return createPortal(
-      <div className="fixed inset-0 z-[10060]">
-        <div className="absolute inset-0 bg-black/60" aria-hidden onClick={onClose} />
-        <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
-            <p className="text-red-600 font-semibold">Error: Contact details not available</p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-4 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold"
-            >
-              Close
-            </button>
+      <div className={MODAL_OVERLAY}>
+        <div className={MODAL_BACKDROP} aria-hidden onClick={onClose} />
+        <div className={MODAL_SHELL}>
+          <div className={MODAL_PANEL_MD}>
+            <div className="p-6">
+              <p className="text-red-600 font-semibold">Error: Contact details not available</p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-4 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>,
@@ -900,30 +925,30 @@ function ContactDetailsModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[10060]">
-      <div className="absolute inset-0 bg-black/60" aria-hidden onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden my-8">
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex items-center gap-3">
+    <div className={MODAL_OVERLAY}>
+      <div className={MODAL_BACKDROP} aria-hidden onClick={onClose} />
+      <div className={MODAL_SHELL}>
+        <div className={MODAL_PANEL_LG}>
+          <div className={MODAL_HEADER}>
+            <div className="flex min-w-0 items-center gap-3">
               <CategoryIcon category={qr.category} categories={categories} size="sm" />
-              <div>
-                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Contact Details</p>
-                <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest">Contact Details</p>
+                <p className="text-base sm:text-lg font-extrabold text-gray-900 break-words">{qr.assetName}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
               <button
                 type="button"
                 onClick={onEdit}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20"
+                className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold transition-all shadow-lg shadow-blue-900/20"
               >
                 <Edit2 size={16} /> Edit
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="inline-flex shrink-0 items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
                 aria-label="Close"
               >
                 <X size={18} className="text-gray-500" />
@@ -931,37 +956,37 @@ function ContactDetailsModal({
             </div>
           </div>
 
-          <div className="max-h-[70vh] overflow-y-auto p-5 sm:p-6">
+          <div className={MODAL_BODY}>
             {/* Owner Info */}
             <div className="bg-gray-50 rounded-2xl border border-gray-100 p-5 mb-5">
               <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Owner Information</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <User size={18} className="text-blue-600 mt-0.5" />
-                  <div>
+              <div className={FORM_GRID_2}>
+                <div className="flex items-start gap-3 min-w-0">
+                  <User size={18} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400">Full Name</p>
-                    <p className="font-semibold text-gray-900">{profile.fullName}</p>
+                    <p className="font-semibold text-gray-900 break-words">{profile.fullName}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Phone size={18} className="text-blue-600 mt-0.5" />
-                  <div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <Phone size={18} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400">Phone</p>
-                    <p className="font-semibold text-gray-900">{profile.phone}</p>
+                    <p className="font-semibold text-gray-900 break-all">{profile.phone}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Mail size={18} className="text-blue-600 mt-0.5" />
-                  <div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <Mail size={18} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400">Email</p>
-                    <p className="font-semibold text-gray-900">{profile.email}</p>
+                    <p className="font-semibold text-gray-900 break-all">{profile.email}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <MapPin size={18} className="text-blue-600 mt-0.5" />
-                  <div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <MapPin size={18} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400">Address</p>
-                    <p className="font-semibold text-gray-900">{profile.address}</p>
+                    <p className="font-semibold text-gray-900 break-words">{profile.address}</p>
                   </div>
                 </div>
               </div>
@@ -973,53 +998,53 @@ function ContactDetailsModal({
                 <h4 className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Car size={16} /> Vehicle Information
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className={FORM_GRID_3}>
                   {profile.vehicleMake && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Make</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleMake}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.vehicleMake}</p>
                     </div>
                   )}
                   {profile.vehicleModel && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Model</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleModel}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.vehicleModel}</p>
                     </div>
                   )}
                   {profile.vehicleReg && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Registration</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleReg}</p>
+                      <p className="font-semibold text-gray-900 break-all">{profile.vehicleReg}</p>
                     </div>
                   )}
                   {profile.vehicleYear && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Year</p>
                       <p className="font-semibold text-gray-900">{profile.vehicleYear}</p>
                     </div>
                   )}
                   {profile.vehicleColor && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Color</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleColor}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.vehicleColor}</p>
                     </div>
                   )}
                   {profile.vehicleFuel && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Fuel</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleFuel}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.vehicleFuel}</p>
                     </div>
                   )}
                   {profile.vehicleVin && (
-                    <div className="col-span-2 sm:col-span-3">
+                    <div className="col-span-full min-w-0">
                       <p className="text-xs text-gray-500">VIN</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleVin}</p>
+                      <p className="font-semibold text-gray-900 break-all">{profile.vehicleVin}</p>
                     </div>
                   )}
                   {profile.vehicleInsuranceNo && (
-                    <div className="col-span-2 sm:col-span-3">
+                    <div className="col-span-full min-w-0">
                       <p className="text-xs text-gray-500">Insurance No</p>
-                      <p className="font-semibold text-gray-900">{profile.vehicleInsuranceNo}</p>
+                      <p className="font-semibold text-gray-900 break-all">{profile.vehicleInsuranceNo}</p>
                     </div>
                   )}
                 </div>
@@ -1030,27 +1055,27 @@ function ContactDetailsModal({
             {isPetQrCategory(qr.category) && (
               <div className="bg-amber-50 rounded-2xl border border-amber-100 p-5 mb-5">
                 <h4 className="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-4">Pet Information</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className={FORM_GRID_3}>
                   {profile.petName && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Name</p>
-                      <p className="font-semibold text-gray-900">{profile.petName}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.petName}</p>
                     </div>
                   )}
                   {profile.petSpecies && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Species</p>
-                      <p className="font-semibold text-gray-900">{profile.petSpecies}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.petSpecies}</p>
                     </div>
                   )}
                   {profile.petBreed && (
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-gray-500">Breed</p>
-                      <p className="font-semibold text-gray-900">{profile.petBreed}</p>
+                      <p className="font-semibold text-gray-900 break-words">{profile.petBreed}</p>
                     </div>
                   )}
                   {profile.petNotes && (
-                    <div className="col-span-2 sm:col-span-3">
+                    <div className="col-span-full min-w-0">
                       <p className="text-xs text-gray-500">Notes</p>
                       <p className="font-semibold text-gray-900">{profile.petNotes}</p>
                     </div>
@@ -1069,13 +1094,13 @@ function ContactDetailsModal({
                   </h4>
                   <div className="space-y-3">
                     {contacts.map((contact, idx) => (
-                      <div key={idx} className="flex items-center gap-4 bg-white rounded-xl p-3 border border-red-100">
-                        <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold">
+                      <div key={idx} className="flex items-start sm:items-center gap-3 bg-white rounded-xl p-3 border border-red-100">
+                        <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold shrink-0">
                           {idx + 1}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{contact.name}</p>
-                          <p className="text-sm text-gray-500">{contact.phone}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-900 break-words">{contact.name}</p>
+                          <p className="text-sm text-gray-500 break-all">{contact.phone}</p>
                         </div>
                       </div>
                     ))}
@@ -1120,67 +1145,67 @@ function EditContactModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[10060]">
-      <div className="absolute inset-0 bg-black/60" aria-hidden onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden my-8">
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <div>
-              <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Edit Contact Details</p>
-              <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
+    <div className={MODAL_OVERLAY}>
+      <div className={MODAL_BACKDROP} aria-hidden onClick={onClose} />
+      <div className={MODAL_SHELL}>
+        <div className={MODAL_PANEL_LG}>
+          <div className={MODAL_HEADER}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest">Edit Contact Details</p>
+              <p className="text-base sm:text-lg font-extrabold text-gray-900 break-words">{qr.assetName}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="inline-flex shrink-0 self-end sm:self-auto items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
               aria-label="Close"
             >
               <X size={18} className="text-gray-500" />
             </button>
           </div>
 
-          <div className="max-h-[70vh] overflow-y-auto p-5 sm:p-6">
+          <div className={MODAL_BODY}>
             {/* Owner Info */}
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Owner Information</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+              <div className={FORM_GRID_2}>
+                <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
                   <input
                     type="text"
                     value={form.fullName || ""}
                     onChange={(e) => updateField("fullName", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className={FORM_INPUT}
                     required
                   />
                 </div>
-                <div>
+                <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Phone *</label>
                   <input
                     type="tel"
                     value={form.phone || ""}
                     onChange={(e) => updateField("phone", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className={FORM_INPUT}
                     required
                   />
                 </div>
-                <div>
+                <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
                   <input
                     type="email"
                     value={form.email || ""}
                     onChange={(e) => updateField("email", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className={FORM_INPUT}
                     required
                   />
                 </div>
-                <div>
+                <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Address *</label>
                   <input
                     type="text"
                     value={form.address || ""}
                     onChange={(e) => updateField("address", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className={FORM_INPUT}
                     required
                   />
                 </div>
@@ -1193,77 +1218,77 @@ function EditContactModal({
                 <h4 className="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Car size={16} /> Vehicle Information
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div>
+                <div className={FORM_GRID_3}>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Make</label>
                     <input
                       type="text"
                       value={form.vehicleMake || ""}
                       onChange={(e) => updateField("vehicleMake", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Model</label>
                     <input
                       type="text"
                       value={form.vehicleModel || ""}
                       onChange={(e) => updateField("vehicleModel", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Registration</label>
                     <input
                       type="text"
                       value={form.vehicleReg || ""}
                       onChange={(e) => updateField("vehicleReg", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Year</label>
                     <input
                       type="text"
                       value={form.vehicleYear || ""}
                       onChange={(e) => updateField("vehicleYear", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Color</label>
                     <input
                       type="text"
                       value={form.vehicleColor || ""}
                       onChange={(e) => updateField("vehicleColor", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Fuel Type</label>
                     <input
                       type="text"
                       value={form.vehicleFuel || ""}
                       onChange={(e) => updateField("vehicleFuel", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div className="col-span-2 sm:col-span-3">
+                  <div className={`${FORM_FIELD} col-span-full`}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">VIN</label>
                     <input
                       type="text"
                       value={form.vehicleVin || ""}
                       onChange={(e) => updateField("vehicleVin", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div className="col-span-2 sm:col-span-3">
+                  <div className={`${FORM_FIELD} col-span-full`}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Insurance Number</label>
                     <input
                       type="text"
                       value={form.vehicleInsuranceNo || ""}
                       onChange={(e) => updateField("vehicleInsuranceNo", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
                 </div>
@@ -1274,41 +1299,41 @@ function EditContactModal({
             {isPetQrCategory(qr.category) && (
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-4">Pet Information</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div>
+                <div className={FORM_GRID_3}>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
                     <input
                       type="text"
                       value={form.petName || ""}
                       onChange={(e) => updateField("petName", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Species</label>
                     <input
                       type="text"
                       value={form.petSpecies || ""}
                       onChange={(e) => updateField("petSpecies", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div>
+                  <div className={FORM_FIELD}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Breed</label>
                     <input
                       type="text"
                       value={form.petBreed || ""}
                       onChange={(e) => updateField("petBreed", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className={FORM_INPUT}
                     />
                   </div>
-                  <div className="col-span-2 sm:col-span-3">
+                  <div className={`${FORM_FIELD} col-span-full`}>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
                     <textarea
                       value={form.petNotes || ""}
                       onChange={(e) => updateField("petNotes", e.target.value)}
                       rows={3}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all resize-none"
+                      className={`${FORM_INPUT} resize-none`}
                     />
                   </div>
                 </div>
@@ -1317,14 +1342,14 @@ function EditContactModal({
 
             {/* Emergency Contacts */}
             <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold text-red-600 uppercase tracking-widest flex items-center gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                <h4 className="text-sm font-semibold text-red-600 uppercase tracking-wide sm:tracking-widest flex items-center gap-2">
                   <AlertCircle size={16} /> Emergency Contacts
                 </h4>
                 <button
                   type="button"
                   onClick={addEmergencyContact}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold transition-colors"
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-1 px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold transition-colors"
                 >
                   + Add Contact
                 </button>
@@ -1335,30 +1360,33 @@ function EditContactModal({
                   return (
                     <>
                       {contacts.map((contact, idx) => (
-                        <div key={idx} className="flex items-center gap-3 bg-red-50 rounded-xl p-3 border border-red-100">
-                          <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shrink-0">
-                            {idx + 1}
-                          </div>
-                          <div className="flex-1 grid grid-cols-2 gap-3">
-                            <input
-                              type="text"
-                              placeholder="Name"
-                              value={contact.name || ""}
-                              onChange={(e) => updateEmergencyContact(idx, "name", e.target.value)}
-                              className="px-3 py-2 rounded-lg border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm"
-                            />
-                            <input
-                              type="tel"
-                              placeholder="Phone"
-                              value={contact.phone || ""}
-                              onChange={(e) => updateEmergencyContact(idx, "phone", e.target.value)}
-                              className="px-3 py-2 rounded-lg border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm"
-                            />
+                        <div key={idx} className="flex flex-col gap-3 sm:flex-row sm:items-center bg-red-50 rounded-xl p-3 border border-red-100">
+                          <div className="flex items-center gap-3 sm:contents">
+                            <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shrink-0">
+                              {idx + 1}
+                            </div>
+                            <div className={`${FORM_GRID_2} flex-1 min-w-0`}>
+                              <input
+                                type="text"
+                                placeholder="Name"
+                                value={contact.name || ""}
+                                onChange={(e) => updateEmergencyContact(idx, "name", e.target.value)}
+                                className="w-full min-w-0 px-3 py-2 rounded-lg border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm"
+                              />
+                              <input
+                                type="tel"
+                                placeholder="Phone"
+                                value={contact.phone || ""}
+                                onChange={(e) => updateEmergencyContact(idx, "phone", e.target.value)}
+                                className="w-full min-w-0 px-3 py-2 rounded-lg border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm"
+                              />
+                            </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => removeEmergencyContact(idx)}
-                            className="p-2 rounded-lg hover:bg-red-200 text-red-600 transition-colors"
+                            className="self-end sm:self-auto p-2 rounded-lg hover:bg-red-200 text-red-600 transition-colors"
+                            aria-label={`Remove emergency contact ${idx + 1}`}
                           >
                             <X size={16} />
                           </button>
@@ -1375,18 +1403,18 @@ function EditContactModal({
           </div>
 
           {/* Footer */}
-          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+          <div className={MODAL_FOOTER}>
             {error && (
               <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                 {error}
               </div>
             )}
-            <div className="flex justify-end gap-3">
+            <div className={MODAL_FOOTER_ACTIONS}>
               <button
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1394,7 +1422,7 @@ function EditContactModal({
                 type="button"
                 onClick={onSave}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -1436,48 +1464,47 @@ function DndModal({
   toggling: boolean;
 }) {
   return createPortal(
-    <div className="fixed inset-0 z-[10060]">
-      <div className="absolute inset-0 bg-black/60" aria-hidden onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+    <div className={MODAL_OVERLAY}>
+      <div className={MODAL_BACKDROP} aria-hidden onClick={onClose} />
+      <div className={MODAL_SHELL}>
+        <div className={MODAL_PANEL_MD}>
+          <div className={MODAL_HEADER}>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
                 <Moon size={20} />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Do Not Disturb</p>
-                <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest">Do Not Disturb</p>
+                <p className="text-base sm:text-lg font-extrabold text-gray-900 break-words">{qr.assetName}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="inline-flex shrink-0 self-end sm:self-auto items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
               aria-label="Close"
             >
               <X size={18} className="text-gray-500" />
             </button>
           </div>
 
-          <div className="p-5 sm:p-6">
+          <div className={MODAL_BODY}>
             <div className="bg-amber-50 rounded-xl border border-amber-100 p-4 mb-5">
-              <p className="text-sm text-amber-800">
+              <p className="text-sm text-amber-800 leading-relaxed">
                 <strong>Note:</strong> When DND is enabled, no phone calls or SMS messages can be initiated through
                 this QR code. A DND message will be displayed instead of contact options.
               </p>
             </div>
 
-            {/* Toggle */}
-            <div className="flex items-center justify-between mb-5">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
+              <div className="min-w-0">
                 <p className="font-semibold text-gray-900">Enable DND</p>
                 <p className="text-sm text-gray-500">Turn on Do Not Disturb mode</p>
               </div>
               <button
                 type="button"
                 onClick={() => setEnabled(!enabled)}
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors self-start sm:self-auto ${
                   enabled ? "bg-amber-500" : "bg-gray-300"
                 }`}
               >
@@ -1489,7 +1516,6 @@ function DndModal({
               </button>
             </div>
 
-            {/* DND Until */}
             {enabled && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">DND Active Until</label>
@@ -1497,28 +1523,28 @@ function DndModal({
                   type="datetime-local"
                   value={dndUntil}
                   onChange={(e) => setDndUntil(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+                  className="w-full min-w-0 max-w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
                 />
                 <p className="text-xs text-gray-400 mt-1">Leave blank for indefinite (1 year default)</p>
               </div>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={toggling}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
-            >
+          <div className={MODAL_FOOTER}>
+            <div className={MODAL_FOOTER_ACTIONS}>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={toggling}
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+              >
               {toggling ? (
                 <>
                   <Loader size={16} className="animate-spin" /> Saving...
@@ -1529,6 +1555,7 @@ function DndModal({
                 </>
               )}
             </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1552,43 +1579,43 @@ function DeleteActivationModal({
   error?: string;
 }) {
   return createPortal(
-    <div className="fixed inset-0 z-[10060]">
-      <div className="absolute inset-0 bg-black/60" aria-hidden onClick={deleting ? undefined : onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+    <div className={MODAL_OVERLAY}>
+      <div className={MODAL_BACKDROP} aria-hidden onClick={deleting ? undefined : onClose} />
+      <div className={MODAL_SHELL}>
+        <div className={MODAL_PANEL_MD}>
+          <div className={MODAL_HEADER}>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
                 <Trash2 size={20} />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Delete Activation</p>
-                <p className="text-lg font-extrabold text-gray-900">{qr.assetName}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest">Delete Activation</p>
+                <p className="text-base sm:text-lg font-extrabold text-gray-900 break-words">{qr.assetName}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
               disabled={deleting}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="inline-flex shrink-0 self-end sm:self-auto items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
               aria-label="Close"
             >
               <X size={18} className="text-gray-500" />
             </button>
           </div>
 
-          <div className="p-5 sm:p-6">
+          <div className={MODAL_BODY}>
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
-              <p className="text-sm text-red-800">
+              <p className="text-sm text-red-800 leading-relaxed">
                 <strong>Warning:</strong> This will reset the QR to <span className="font-semibold">Dispatched</span>{" "}
                 status. The owner profile and emergency contacts will be removed, and the QR sticker will need to be
                 registered again before it can be used.
               </p>
             </div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-700 leading-relaxed">
               Are you sure you want to delete the activation for{" "}
-              <span className="font-bold text-gray-900">{qr.assetName}</span>{" "}
-              <span className="text-gray-500">(ID: {qr.uniqueId})</span>?
+              <span className="font-bold text-gray-900 break-words">{qr.assetName}</span>{" "}
+              <span className="text-gray-500 break-all">(ID: {qr.uniqueId})</span>?
             </p>
             {error && (
               <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -1597,21 +1624,22 @@ function DeleteActivationModal({
             )}
           </div>
 
-          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={deleting}
-              className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={deleting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
-            >
+          <div className={MODAL_FOOTER}>
+            <div className={MODAL_FOOTER_ACTIONS}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={deleting}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={deleting}
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
+              >
               {deleting ? (
                 <>
                   <Loader size={16} className="animate-spin" /> Deleting...
@@ -1622,6 +1650,7 @@ function DeleteActivationModal({
                 </>
               )}
             </button>
+            </div>
           </div>
         </div>
       </div>
