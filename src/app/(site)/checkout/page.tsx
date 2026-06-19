@@ -7,6 +7,7 @@ import { useCart } from "@/components/providers/CartProvider";
 import { ShippingAddress } from '@/types';
 import { MapPin, CreditCard, ShoppingBag, CheckCircle, Package, ChevronDown, Plus, Loader } from 'react-feather';
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 import {
   CartDiscountQuote,
   AvailableDiscountOffer,
@@ -73,6 +74,9 @@ const EMPTY_ADDRESS = {
   country: 'India',
 };
 
+const CHECKOUT_INPUT =
+  "box-border w-full min-w-0 max-w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white";
+
 const CHECKOUT_SESSION_STORAGE_KEY = 'checkoutSessionId';
 
 function newCheckoutSessionId(): string {
@@ -138,7 +142,7 @@ function OfferCard({
 
   return (
     <div
-      className={`flex items-start justify-between gap-3 rounded-xl border px-3.5 py-3 ${
+      className={`flex items-start justify-between gap-3 rounded-xl border px-3.5 py-3 min-w-0 ${
         isApplied
           ? 'border-emerald-200 bg-emerald-50/70'
           : isPending
@@ -147,8 +151,8 @@ function OfferCard({
       }`}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-bold text-gray-900">{offer.name}</p>
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <p className="text-sm font-bold text-gray-900 break-words">{offer.name}</p>
           {offer.code ? (
             <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-blue-900 border border-blue-100">
               {offer.code}
@@ -171,7 +175,7 @@ function OfferCard({
             type="button"
             onClick={onApply}
             disabled={applying}
-            className="rounded-lg bg-blue-900 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition hover:bg-blue-800 disabled:opacity-60"
+            className="rounded-lg bg-blue-900 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition hover:bg-blue-800 disabled:opacity-60 whitespace-nowrap"
           >
             {applying ? '…' : 'Apply'}
           </button>
@@ -929,7 +933,7 @@ export default function CheckoutPage() {
 
   if (status === 'loading') {
     return (
-      <div className="pt-24 pb-12 max-w-screen-xl mx-auto px-4 font-dm flex justify-center items-center min-h-[60vh]">
+      <div className={`${PAGE_TOP_PADDING} pb-12 max-w-screen-xl mx-auto px-3 sm:px-4 font-dm flex justify-center items-center min-h-[60vh]`}>
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900" />
           <p className="mt-4 text-gray-600 font-medium">Loading your checkout…</p>
@@ -940,15 +944,15 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <div className="pt-24 max-w-screen mx-auto font-dm">
+      <div className={`${PAGE_TOP_PADDING} max-w-screen mx-auto font-dm overflow-x-hidden`}>
         <PageTitle title="Checkout" subtitle="Securely complete your purchase">
-          <div className="flex justify-center text-center">
+          <div className="flex justify-center text-center px-3 sm:px-0">
             <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Checkout' }]} variant="light" />
           </div>
         </PageTitle>
       </div>
 
-      <div className="pt-12 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
+      <div className="overflow-x-hidden pt-6 sm:pt-12 pb-16 sm:pb-20 max-w-screen-xl mx-auto px-3 sm:px-6 lg:px-8 font-dm">
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[40vh] bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <div className="w-20 h-20 bg-blue-50 text-blue-900 rounded-full flex items-center justify-center mb-6">
@@ -961,59 +965,63 @@ export default function CheckoutPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 min-w-0">
 
             {/* ── Left Column ── */}
-            <div className="lg:col-span-7 space-y-8">
+            <div className="lg:col-span-7 space-y-6 sm:space-y-8 min-w-0">
 
               {/* Account badge */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4">
-                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CheckCircle size={24} />
+              <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-3 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={22} className="sm:hidden" />
+                  <CheckCircle size={24} className="hidden sm:block" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-0.5">Account Connected</h3>
-                  <p className="text-gray-500 text-sm">Checked in as <span className="font-medium text-gray-900">{session?.user?.email}</span></p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-0.5">Account Connected</h3>
+                  <p className="text-gray-500 text-sm break-words">
+                    Checked in as{' '}
+                    <span className="font-medium text-gray-900 break-all">{session?.user?.email}</span>
+                  </p>
                 </div>
               </div>
 
               {/* Shipping card */}
-              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-gray-200/40 border border-gray-100 relative overflow-hidden">
+              <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl shadow-lg shadow-gray-200/40 border border-gray-100 relative overflow-hidden min-w-0">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-blue-900" />
 
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center">
+                <div className="flex items-center gap-3 mb-6 sm:mb-8 min-w-0">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center shrink-0">
                     <MapPin size={20} />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">Shipping Details</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Shipping Details</h3>
                 </div>
 
-                <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6">
+                <form id="checkout-form" onSubmit={handleCheckout} className="space-y-6 min-w-0">
 
                   {/* Personal info */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 border-b pb-2 border-gray-100">Personal Information</h4>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest mb-4 border-b pb-2 border-gray-100">Personal Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 min-w-0">
                         <label className="text-sm font-medium text-gray-700">Full Name</label>
                         <input
-                          className="w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                          className={CHECKOUT_INPUT}
                           placeholder="John Doe"
                           value={addressData.name}
                           onChange={e => setAddressData({ ...addressData, name: e.target.value })}
                           required
                         />
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 min-w-0">
                         <label className="text-sm font-medium text-gray-700">Email</label>
                         <input
-                          className="w-full border border-gray-200 px-4 py-3 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed outline-none"
+                          className={`${CHECKOUT_INPUT} bg-gray-100 text-gray-400 cursor-not-allowed`}
                           type="email"
                           value={addressData.email}
                           disabled
                         />
                       </div>
-                      <div className="space-y-1.5 md:col-span-2">
+                      <div className="space-y-1.5 md:col-span-2 min-w-0">
                         <label className="text-sm font-medium text-gray-700" htmlFor="checkout-phone">
                           Phone Number
                         </label>
@@ -1023,7 +1031,7 @@ export default function CheckoutPage() {
                           inputMode="numeric"
                           autoComplete="tel"
                           maxLength={15}
-                          className={`w-full border px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white ${phoneError ? 'border-red-300' : 'border-gray-200'}`}
+                          className={`${CHECKOUT_INPUT} ${phoneError ? 'border-red-300' : ''}`}
                           placeholder="8-15 digits (numbers only)"
                           value={addressData.phone}
                           onChange={handlePhoneChange}
@@ -1041,8 +1049,8 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Delivery address */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 border-b pb-2 border-gray-100">Delivery Address</h4>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest mb-4 border-b pb-2 border-gray-100">Delivery Address</h4>
 
                     {/* ── Saved addresses dropdown ── */}
                     {safeSavedAddresses.length > 0 && (
@@ -1148,11 +1156,11 @@ export default function CheckoutPage() {
                             Change
                           </button>
                         </div>
-                        <div className="flex gap-2 mt-3 pt-3 border-t border-blue-100/60">
+                        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-blue-100/60">
                           <button
                             type="button"
                             onClick={() => startEditAddress(selectedSaved)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/60 px-3 py-1.5 rounded-lg transition-colors"
+                            className="inline-flex flex-1 sm:flex-none min-w-0 items-center justify-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/60 px-3 py-2 rounded-lg transition-colors"
                           >
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                             Edit
@@ -1161,7 +1169,7 @@ export default function CheckoutPage() {
                             type="button"
                             onClick={() => handleDeleteAddress(selectedSaved.id)}
                             disabled={deletingAddressId === selectedSaved.id}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                            className="inline-flex flex-1 sm:flex-none min-w-0 items-center justify-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
                           >
                             {deletingAddressId === selectedSaved.id ? (
                               <Loader size={13} className="animate-spin" />
@@ -1176,14 +1184,14 @@ export default function CheckoutPage() {
 
                     {/* New address form fields */}
                     {isNewAddress && (
-                      <div className="space-y-3">
+                      <div className="space-y-3 min-w-0">
 
                         {/* Street */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 min-w-0">
                           <label className="text-sm font-medium text-gray-700">Street Address</label>
-                          <div className="relative">
+                          <div className="relative min-w-0">
                             <input
-                              className="w-full border border-gray-200 px-4 py-3 pr-10 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                              className={`${CHECKOUT_INPUT} pr-10`}
                               placeholder="Start typing your address…"
                               value={addressData.street}
                               onChange={e => setAddressData({ ...addressData, street: e.target.value })}
@@ -1195,8 +1203,8 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* Pincode → India Post API */}
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <div className="space-y-1.5 min-w-0">
+                          <label className="text-sm font-medium text-gray-700 flex flex-wrap items-center gap-x-2 gap-y-1">
                             Pincode
                             {pincodeLoading && (
                               <span className="flex items-center gap-1 text-xs text-blue-600 font-normal">
@@ -1210,7 +1218,7 @@ export default function CheckoutPage() {
                             )}
                           </label>
                           <input
-                            className={`w-full border px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white ${pincodeError ? 'border-red-300' : 'border-gray-200'}`}
+                            className={`${CHECKOUT_INPUT} ${pincodeError ? 'border-red-300' : ''}`}
                             placeholder="6-digit pincode"
                             value={addressData.pincode}
                             onChange={handlePincodeChange}
@@ -1222,21 +1230,21 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* City & State — auto-filled, but editable */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="text-sm font-medium text-gray-700">City / District</label>
                             <input
-                              className="w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                              className={CHECKOUT_INPUT}
                               placeholder="Auto-filled"
                               value={addressData.city}
                               onChange={e => setAddressData({ ...addressData, city: e.target.value })}
                               required
                             />
                           </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="text-sm font-medium text-gray-700">State</label>
                             <input
-                              className="w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                              className={CHECKOUT_INPUT}
                               placeholder="Auto-filled"
                               value={addressData.state}
                               onChange={e => setAddressData({ ...addressData, state: e.target.value })}
@@ -1245,10 +1253,10 @@ export default function CheckoutPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 min-w-0">
                           <label className="text-sm font-medium text-gray-700">Country</label>
                           <input
-                            className="w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                            className={CHECKOUT_INPUT}
                             value={addressData.country}
                             onChange={e => setAddressData({ ...addressData, country: e.target.value })}
                             required
@@ -1256,10 +1264,10 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* Address label */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 min-w-0">
                           <label className="text-sm font-medium text-gray-700">Address Label (optional)</label>
                           <input
-                            className="w-full border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all bg-gray-50/50 hover:bg-white"
+                            className={CHECKOUT_INPUT}
                             placeholder="e.g. Home, Work, Office"
                             value={addressLabel}
                             onChange={e => setAddressLabel(e.target.value)}
@@ -1283,12 +1291,12 @@ export default function CheckoutPage() {
 
                         {/* Save / Cancel buttons */}
                         {(saveToAccount || editingAddressId) && (
-                          <div className="flex items-center gap-3 pt-2">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 pt-2">
                             <button
                               type="button"
                               onClick={handleSaveAddress}
                               disabled={isSavingAddress}
-                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm transition-all shadow-md disabled:opacity-60"
+                              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm transition-all shadow-md disabled:opacity-60"
                             >
                               {isSavingAddress ? (
                                 <><Loader size={15} className="animate-spin" /> Saving…</>
@@ -1302,7 +1310,7 @@ export default function CheckoutPage() {
                               <button
                                 type="button"
                                 onClick={cancelEditAddress}
-                                className="px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all"
                               >
                                 Cancel
                               </button>
@@ -1320,25 +1328,25 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Payment method */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 mb-4 min-w-0">
+                      <div className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center shrink-0">
                         <CreditCard size={20} />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Payment Method</h3>
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">Payment Method</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {(['COD', 'ONLINE'] as const).map(method => (
                         <label
                           key={method}
-                          className={`flex items-center gap-3 cursor-pointer border-2 px-5 py-4 rounded-xl transition-all ${paymentMethod === method ? 'border-blue-900 bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
+                          className={`flex min-w-0 items-start sm:items-center gap-3 cursor-pointer border-2 px-4 sm:px-5 py-3.5 sm:py-4 rounded-xl transition-all ${paymentMethod === method ? 'border-blue-900 bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
                         >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${paymentMethod === method ? 'border-blue-900' : 'border-gray-300'}`}>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0 ${paymentMethod === method ? 'border-blue-900' : 'border-gray-300'}`}>
                             {paymentMethod === method && <div className="w-2.5 h-2.5 bg-blue-900 rounded-full" />}
                           </div>
                           <input className="hidden" type="radio" value={method} checked={paymentMethod === method} onChange={e => setPaymentMethod(e.target.value)} />
-                          <div>
-                            <p className={`font-semibold ${paymentMethod === method ? 'text-blue-900' : 'text-gray-900'}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-semibold text-sm sm:text-base break-words ${paymentMethod === method ? 'text-blue-900' : 'text-gray-900'}`}>
                               {method === 'COD' ? 'Cash on Delivery' : 'Pay Online'}
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
@@ -1354,17 +1362,17 @@ export default function CheckoutPage() {
             </div>
 
             {/* ── Right Column: Order Summary ── */}
-            <div className="lg:col-span-5">
-              <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-200 sticky top-28">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Order Summary</h3>
+            <div className="lg:col-span-5 min-w-0">
+              <div className="bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl border border-gray-200 lg:sticky lg:top-28 min-w-0">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-5 sm:mb-6">Order Summary</h3>
 
-                <div className="space-y-4 mb-6">
+                <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-6">
                   {computedCartDetails.items.map((item, idx) => {
                     const originalUnit = Number(item.product.price);
                     const hasDiscount = item.details.hasDiscount;
 
                     return (
-                      <div key={idx} className="flex gap-4 items-start bg-white p-4 rounded-xl border border-gray-150 shadow-sm hover:shadow-md transition-all">
+                      <div key={idx} className="flex gap-3 sm:gap-4 items-start bg-white p-3 sm:p-4 rounded-xl border border-gray-150 shadow-sm hover:shadow-md transition-all min-w-0">
                         <div className="w-14 h-14 bg-blue-50/50 rounded-lg flex items-center justify-center flex-shrink-0 text-blue-900">
                           <Package size={22} />
                         </div>
@@ -1435,9 +1443,9 @@ export default function CheckoutPage() {
                 )}
 
                 {/* Promo Code Coupon Input Box */}
-                <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm mb-6">
+                <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm mb-5 sm:mb-6 min-w-0">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Have a promo code?</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
                     <input
                       type="text"
                       placeholder="ENTER CODE"
@@ -1446,27 +1454,27 @@ export default function CheckoutPage() {
                         setCouponInput(e.target.value);
                         setCouponError(null);
                       }}
-                      className="flex-1 border border-gray-200 px-3.5 py-2.5 rounded-xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all uppercase text-sm font-semibold tracking-wider placeholder-gray-300 bg-gray-50/50 hover:bg-white"
+                      className="box-border w-full min-w-0 flex-1 border border-gray-200 px-3.5 py-2.5 rounded-xl focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 outline-none transition-all uppercase text-sm font-semibold tracking-wider placeholder-gray-300 bg-gray-50/50 hover:bg-white"
                     />
                     <button
                       type="button"
                       onClick={() => void handleApplyCoupon()}
-                      className="bg-blue-900 hover:bg-blue-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                      className="w-full sm:w-auto shrink-0 bg-blue-900 hover:bg-blue-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
                     >
                       Apply
                     </button>
                   </div>
-                  {couponError && <p className="text-xs text-red-500 mt-2 font-medium">{couponError}</p>}
+                  {couponError && <p className="text-xs text-red-500 mt-2 font-medium break-words">{couponError}</p>}
                   {appliedCoupon && (
-                    <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 text-xs font-bold px-3.5 py-2.5 rounded-xl mt-3 border border-emerald-100">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-emerald-50 text-emerald-800 text-xs font-bold px-3.5 py-2.5 rounded-xl mt-3 border border-emerald-100 min-w-0">
+                      <span className="flex items-center gap-1.5 min-w-0 break-words">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0" />
                         Coupon &quot;{appliedCoupon}&quot; Applied!
                       </span>
                       <button
                         type="button"
                         onClick={handleRemoveCoupon}
-                        className="text-emerald-900 hover:text-red-600 transition-colors font-extrabold underline text-[11px]"
+                        className="self-start sm:self-auto shrink-0 text-emerald-900 hover:text-red-600 transition-colors font-extrabold underline text-[11px]"
                       >
                         Remove
                       </button>
@@ -1495,10 +1503,12 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-5 mb-8">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-3xl font-extrabold text-blue-900">₹{computedCartDetails.finalTotal.toFixed(2).replace(/\.00$/, '')}</span>
+                <div className="border-t border-gray-200 pt-4 sm:pt-5 mb-6 sm:mb-8 min-w-0">
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <span className="text-base sm:text-lg font-bold text-gray-900">Total</span>
+                    <span className="text-2xl sm:text-3xl font-extrabold text-blue-900 break-all text-right">
+                      ₹{computedCartDetails.finalTotal.toFixed(2).replace(/\.00$/, '')}
+                    </span>
                   </div>
                   <p className="text-right text-xs text-gray-400 mt-1">Includes all taxes</p>
                 </div>
@@ -1517,12 +1527,14 @@ export default function CheckoutPage() {
                     }
                   }}
                   disabled={loading}
-                  className="w-full bg-blue-900 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex justify-center items-center gap-3 text-base"
+                  className="w-full max-w-full bg-blue-900 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 sm:py-4 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex justify-center items-center gap-2 sm:gap-3 text-sm sm:text-base px-4"
                 >
                   {loading ? (
-                    <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
+                    <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" /> Processing…</>
                   ) : (
-                    paymentMethod === 'ONLINE' ? 'Pay Now & Place Order' : 'Place Order via COD'
+                    <span className="text-center leading-snug">
+                      {paymentMethod === 'ONLINE' ? 'Pay Now & Place Order' : 'Place Order via COD'}
+                    </span>
                   )}
                 </button>
                 {checkoutError && (
@@ -1531,7 +1543,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400 bg-white py-2.5 px-4 rounded-lg border border-gray-100">
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-gray-400 bg-white py-2.5 px-3 sm:px-4 rounded-lg border border-gray-100 text-center">
                   <CheckCircle size={14} className="text-green-500" />
                   Secure and encrypted checkout
                 </div>
