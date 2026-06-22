@@ -12,8 +12,12 @@ export interface QrCategoryItem {
 export const isPetQrCategory = (cat: string) => /pet|dog|cat/i.test(cat);
 export const isBikeQrCategory = (cat: string) => /bike|motor/i.test(cat);
 export const isHomeQrCategory = (cat: string) => /home/i.test(cat);
+export const isCarQrCategory = (cat: string) => {
+  if (isBikeQrCategory(cat) || isPetQrCategory(cat) || isHomeQrCategory(cat)) return false;
+  return /vehicle|car|auto/i.test(cat);
+};
 export const isVehicleQrCategory = (cat: string) =>
-  /vehicle|car/i.test(cat) || (isBikeQrCategory(cat) === false && /auto/i.test(cat));
+  isCarQrCategory(cat) || isBikeQrCategory(cat);
 
 export function findCategoryForQr(
   category: string,

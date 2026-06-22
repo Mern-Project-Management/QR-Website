@@ -37,6 +37,7 @@ import {
   getCategoryAccentClasses,
   getCategoryLabel,
   isBikeQrCategory,
+  isCarQrCategory,
   isHomeQrCategory,
   isPetQrCategory,
   isVehicleQrCategory,
@@ -639,10 +640,19 @@ type ContactView = "contact" | "verify" | "emergency";
 
 type ContactReasonOption = { label: string; value: string };
 
-const VEHICLE_CONTACT_REASONS: ContactReasonOption[] = [
+const CAR_CONTACT_REASONS: ContactReasonOption[] = [
+  { label: "Wrong Parking", value: "CAR_WRONG_PARKING" },
+  { label: "Flat tyre", value: "CAR_FLAT_TYRE" },
+  { label: "Lights On", value: "CAR_LIGHTS_ON" },
+  { label: "Door/Window open", value: "CAR_DOOR_OPEN" },
+  { label: "Tow risk", value: "CAR_TOW_RISK" },
+  { label: "Vehicle damaged", value: "CAR_VEHICLE_DAMAGE" },
+  { label: "Other", value: "CAR_GENERAL" },
+];
+
+const BIKE_CONTACT_REASONS: ContactReasonOption[] = [
   { label: "Wrong Parking", value: "GENERAL" },
   { label: "Lights On", value: "OTHER" },
-  { label: "Door Open", value: "OTHER" },
   { label: "Tow Alert", value: "OTHER" },
   { label: "Accident", value: "DAMAGED" },
   { label: "Other", value: "OTHER" },
@@ -656,9 +666,17 @@ const PET_CONTACT_REASONS: ContactReasonOption[] = [
   { label: "Other", value: "OTHER" },
 ];
 
+const HOME_CONTACT_REASONS: ContactReasonOption[] = [
+  { label: "Delivery person", value: "HOME_DELIVERY" },
+  { label: "Visitor", value: "HOME_VISITOR" },
+  { label: "Other", value: "HOME_OTHER" },
+];
+
 function getContactReasons(category: string): ContactReasonOption[] {
+  if (isHomeQrCategory(category)) return HOME_CONTACT_REASONS;
   if (isPetQrCategory(category)) return PET_CONTACT_REASONS;
-  if (isVehicleFormCategory(category)) return VEHICLE_CONTACT_REASONS;
+  if (isCarQrCategory(category)) return CAR_CONTACT_REASONS;
+  if (isBikeQrCategory(category)) return BIKE_CONTACT_REASONS;
   return [
     { label: "Found Item", value: "FOUND" },
     { label: "Return / Handover", value: "RETURN" },
@@ -1102,10 +1120,13 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
   const [selectedReasonLabel, setSelectedReasonLabel] = useState(
     contactReasons[0]?.label ?? "General",
   );
+  const [visitorName, setVisitorName] = useState("");
+  const [contactError, setContactError] = useState("");
 
   useEffect(() => {
     const list = getContactReasons(display.category);
     setSelectedReasonLabel(list[0]?.label ?? "General");
+    setVisitorName("");
   }, [display.category]);
 
   const selectedReason =
@@ -1116,6 +1137,15 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
   const categoryLabel = getCategoryLabel(display.category, categories);
 
   const openVerify = (mode: "call" | "sms") => {
+    setContactError("");
+    if (
+      isHomeQrCategory(display.category) &&
+      selectedReason === "HOME_VISITOR" &&
+      !visitorName.trim()
+    ) {
+      setContactError("Please enter the visitor name.");
+      return;
+    }
     setVerifyMode(mode);
     setView("verify");
   };
@@ -1129,6 +1159,7 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
         mode={verifyMode}
         reason={selectedReason}
         reasonLabel={selectedReasonLabel}
+        visitorName={visitorName.trim() || undefined}
         category={display.category}
         categories={categories}
       />
@@ -1245,7 +1276,29 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
             );
           })}
         </div>
+        {isHomeQrCategory(display.category) && selectedReason === "HOME_VISITOR" && (
+          <div className="mt-4">
+            <label className={LABEL} htmlFor="visitor-name">
+              Visitor name
+            </label>
+            <input
+              id="visitor-name"
+              type="text"
+              value={visitorName}
+              onChange={(e) => setVisitorName(e.target.value)}
+              placeholder="e.g. Prakash"
+              className="form-input w-full rounded-xl border-slate-200"
+              required
+            />
+          </div>
+        )}
       </div>
+
+      {contactError && (
+        <div className="mb-4">
+          <AlertBanner tone="error">{contactError}</AlertBanner>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mb-6 space-y-3">
@@ -1309,6 +1362,7 @@ interface VerifyNumberViewProps {
   mode?: "call" | "sms";
   reason: string;
   reasonLabel: string;
+  visitorName?: string;
   category: string;
   categories: QrCategoryItem[];
 }
@@ -1320,6 +1374,7 @@ function VerifyNumberView({
   mode = "call",
   reason,
   reasonLabel,
+  visitorName,
   category,
   categories,
 }: VerifyNumberViewProps) {
@@ -1446,7 +1501,13 @@ function VerifyNumberView({
         const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contactPhone: phone, otp, reason }),
+          body: JSON.stringify({
+            contactPhone: phone,
+            otp,
+            reason,
+            reasonLabel,
+            ...(visitorName ? { visitorName } : {}),
+          }),
         });
         const json = await res.json();
         if (!json.success) {
@@ -1613,6 +1674,15 @@ interface ReportEmergencyViewProps {
 }
 
 function getEmergencyIssues(category: string) {
+  if (isHomeQrCategory(category)) {
+    return [
+      { id: "accident", label: "Accident" },
+      { id: "fire", label: "Fire / smoke" },
+      { id: "medical", label: "Medical emergency" },
+      { id: "breakin", label: "Break-in / intrusion" },
+      { id: "other", label: "Other urgent" },
+    ];
+  }
   if (isPetQrCategory(category)) {
     return [
       { id: "found", label: "Found pet" },
