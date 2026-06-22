@@ -783,7 +783,7 @@ export default function CheckoutPage() {
           key: keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount,
           currency: currency || 'INR',
-          name: 'QR Website',
+          name: 'Odokho',
           description,
           order_id: orderId,
           prefill: { name, email, contact },
