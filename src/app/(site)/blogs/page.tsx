@@ -10,6 +10,7 @@ import { safeImageSrc } from "@/lib/safeImageSrc";
 import { ArrowUpRight, ChevronDown } from "react-feather";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 
 export default function BlogPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,25 +79,27 @@ export default function BlogPage() {
 
     return (
         <>
-            <div className="pt-24  max-w-screen mx-auto font-dm">
-                {/* Page Title */}
-                <PageTitle title="Blogs" subtitle="">
-                    {/* Breadcrumb */}
-                    <div className="flex justify-center text-center">
-                        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Blogs" }]} variant="light" />
-                    </div>
-                </PageTitle>
-            </div>
-            <div className="page-title bg-light-blue-banner">
-                <div className="max-w-screen-xl mx-auto px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 lg:pt-24 pt-20">
-                    <div className="grid xl:grid-cols-2 lg:grid-cols-3 grid-cols-1 lg:gap-10 relative lg:space-y-0 space-y-5">
-                        <div className="lg:col-span-2 xl:col-span-1">
-                            <h2 className="lg:text-7xl md:text-5xl text-4xl text-gray-900 font-bold mb-13 lg:mb-2 tracking-tight">News, insights and more</h2>
-                            <p className="text-lg mt-3 mb-0 text-gray-800 font-medium">Genuine feedback from those who know us best.</p>
+            <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-4 sm:pb-6 ${PAGE_TOP_PADDING}`}>
+                <div className="max-w-screen mx-auto min-w-0 overflow-x-hidden font-dm">
+                    <PageTitle title="Blogs" subtitle="">
+                        <div className="flex justify-center px-2 text-center sm:px-0">
+                            <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Blogs" }]} variant="light" />
                         </div>
-                        <div className="w-full lg:text-right flex lg:justify-end">
+                    </PageTitle>
+                </div>
+                <div className="max-w-screen-xl mx-auto min-w-0 overflow-x-hidden px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3">
+                    <div className="grid grid-cols-1 relative space-y-5 lg:grid-cols-3 lg:gap-10 lg:space-y-0 xl:grid-cols-2">
+                        <div className="min-w-0 lg:col-span-2 xl:col-span-1">
+                            <h2 className="mb-2 text-2xl font-bold leading-tight tracking-tight break-words text-balance text-gray-900 sm:text-3xl md:text-5xl lg:text-7xl">
+                                News, insights and more
+                            </h2>
+                            <p className="mb-0 mt-3 text-base font-medium text-gray-800 sm:text-lg">
+                                Genuine feedback from those who know us best.
+                            </p>
+                        </div>
+                        <div className="flex w-full min-w-0 lg:justify-end lg:text-right">
                             <div
-                                className="relative w-auto inline-block mt-auto"
+                                className="relative mt-auto inline-block w-full sm:w-auto"
                                 data-aos="zoom-in"
                                 data-aos-duration="400"
                                 data-delay="00"
@@ -104,7 +107,7 @@ export default function BlogPage() {
                                 <select
                                     value={selected}
                                     onChange={(e) => setSelected(e.target.value)}
-                                    className="w-auto text-base font-medium px-5 py-3 appearance-none pr-12 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition duration-300"
+                                    className="w-full sm:w-auto text-base font-medium px-5 py-3 appearance-none pr-12 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition duration-300"
                                     aria-label="Select a categories"
                                 >
                                     <option value="">Select a category</option>
@@ -121,9 +124,9 @@ export default function BlogPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="w-full lg:my-10 my-6 border-t border-gray-200"></div>
+                    <div className="my-6 w-full border-t border-gray-200 lg:my-10"></div>
                 </div>
-            </div>
+            </section>
             <div className="blog-wrap font-dm">
                 <div className="max-w-screen-xl mx-auto px-3 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 lg:pb-24 pb-20">
                     <div className="grid lg:grid-cols-2 grid-cols-1 lg:gap-6 relative lg:space-y-0 space-y-5">

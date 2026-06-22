@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
 
 export default function RefundPolicyPage() {
     const [content, setContent] = useState<string>('');
@@ -31,15 +32,15 @@ export default function RefundPolicyPage() {
 
     return (
         <>
-            <div className="pt-24 max-w-screen mx-auto font-dm">
-                {/* Page Title */}
-                <PageTitle title={title} subtitle="">
-                    {/* Breadcrumb */}
-                    <div className="flex justify-center text-center">
-                        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: title }]} variant="light" />
-                    </div>
-                </PageTitle>
-            </div>
+            <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-4 sm:pb-6 ${PAGE_TOP_PADDING}`}>
+                <div className="max-w-screen mx-auto min-w-0 overflow-x-hidden font-dm">
+                    <PageTitle title={title} subtitle="">
+                        <div className="flex justify-center px-2 text-center sm:px-0">
+                            <Breadcrumb items={[{ label: "Home", href: "/" }, { label: title }]} variant="light" />
+                        </div>
+                    </PageTitle>
+                </div>
+            </section>
             <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 lg:py-24 py-16 font-dm">
                 {loading ? (
                     <div className="flex justify-center items-center py-20">

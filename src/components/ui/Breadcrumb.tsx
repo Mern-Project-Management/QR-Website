@@ -21,7 +21,7 @@ export const Breadcrumb = ({ items }: BreadcrumbProps) => {
                                 {item.label}
                             </Link>
                         ) : (
-                            <span className="text-gray-900">{item.label}</span>
+                            <span className="break-words text-gray-900">{item.label}</span>
                         )}
 
                         {index < items.length - 1 && (
