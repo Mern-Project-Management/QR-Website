@@ -883,6 +883,8 @@ const MODAL_FOOTER_ACTIONS = "flex flex-col-reverse gap-2 sm:flex-row sm:justify
 const FORM_FIELD = "min-w-0 w-full";
 const FORM_INPUT =
   "box-border w-full min-w-0 max-w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all";
+const FORM_INPUT_DISABLED =
+  `${FORM_INPUT} bg-gray-100 text-gray-500 cursor-not-allowed focus:border-gray-200 focus:ring-0`;
 const FORM_GRID_2 = "grid grid-cols-1 md:grid-cols-2 gap-4";
 const FORM_GRID_3 = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4";
 
@@ -1184,9 +1186,8 @@ function EditContactModal({
                   <input
                     type="tel"
                     value={form.phone || ""}
-                    onChange={(e) => updateField("phone", e.target.value)}
-                    className={FORM_INPUT}
-                    required
+                    className={FORM_INPUT_DISABLED}
+                    disabled
                   />
                 </div>
                 <div className={FORM_FIELD}>
@@ -1194,9 +1195,8 @@ function EditContactModal({
                   <input
                     type="email"
                     value={form.email || ""}
-                    onChange={(e) => updateField("email", e.target.value)}
-                    className={FORM_INPUT}
-                    required
+                    className={FORM_INPUT_DISABLED}
+                    disabled
                   />
                 </div>
                 <div className={FORM_FIELD}>
