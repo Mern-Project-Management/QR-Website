@@ -651,11 +651,10 @@ const CAR_CONTACT_REASONS: ContactReasonOption[] = [
 ];
 
 const BIKE_CONTACT_REASONS: ContactReasonOption[] = [
-  { label: "Wrong Parking", value: "GENERAL" },
-  { label: "Lights On", value: "OTHER" },
-  { label: "Tow Alert", value: "OTHER" },
-  { label: "Accident", value: "DAMAGED" },
-  { label: "Other", value: "OTHER" },
+  { label: "Wrong Parking", value: "BIKE_WRONG_PARKING" },
+  { label: "Flat tyre", value: "BIKE_FLAT_TYRE" },
+  { label: "Vehicle damaged", value: "BIKE_VEHICLE_DAMAGE" },
+  { label: "Other", value: "BIKE_GENERAL" },
 ];
 
 const PET_CONTACT_REASONS: ContactReasonOption[] = [
@@ -675,8 +674,8 @@ const HOME_CONTACT_REASONS: ContactReasonOption[] = [
 function getContactReasons(category: string): ContactReasonOption[] {
   if (isHomeQrCategory(category)) return HOME_CONTACT_REASONS;
   if (isPetQrCategory(category)) return PET_CONTACT_REASONS;
-  if (isCarQrCategory(category)) return CAR_CONTACT_REASONS;
   if (isBikeQrCategory(category)) return BIKE_CONTACT_REASONS;
+  if (isCarQrCategory(category)) return CAR_CONTACT_REASONS;
   return [
     { label: "Found Item", value: "FOUND" },
     { label: "Return / Handover", value: "RETURN" },
@@ -849,8 +848,12 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
       setActivated(true);
       if (!didSuccessAlertRef.current) {
         didSuccessAlertRef.current = true;
-        // User requested an explicit alert on successful activation.
-        window.alert("QR activated successfully. A welcome email has been sent — please check your inbox.");
+        const smsSent = json.data?.welcomeSms?.sent === true;
+        const emailSent = json.data?.welcomeEmail?.sent === true;
+        const parts: string[] = ["QR activated successfully."];
+        if (emailSent) parts.push("A welcome email has been sent — please check your inbox.");
+        if (smsSent) parts.push("A confirmation SMS has been sent to your phone.");
+        window.alert(parts.join(" "));
       }
     } catch (err) {
       console.error(err);
@@ -1689,6 +1692,14 @@ function getEmergencyIssues(category: string) {
       { id: "lost", label: "Lost / escaped" },
       { id: "injured", label: "Injured pet" },
       { id: "other", label: "Other urgent" },
+    ];
+  }
+  if (isBikeQrCategory(category) || isCarQrCategory(category)) {
+    return [
+      { id: "accident", label: "Accident" },
+      { id: "damage", label: "Vehicle damage" },
+      { id: "blocking", label: "Blocking access" },
+      { id: "other", label: "Other" },
     ];
   }
   return [

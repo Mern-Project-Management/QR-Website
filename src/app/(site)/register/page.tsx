@@ -323,7 +323,7 @@ function RegisterContent() {
                         </div>
 
                         {/* Social proof */}
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3">
+                        {/* <div className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.05] px-5 py-3">
                             <div className="flex">
                                 {[
                                     { bg: 'bg-blue-400', letter: 'A' },
@@ -343,7 +343,7 @@ function RegisterContent() {
                                 <p className="text-xs font-semibold text-white">12,000+ members</p>
                                 <p className="text-[10px] text-white/35">growing every day</p>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
