@@ -140,38 +140,37 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
             onClick={handleCardClick}
         >
             {/* product image */}
-            <div className="relative overflow-hidden rounded-xl bg-productcard-gradient min-h-[180px] flex items-center justify-center">
-                {product.discount && (
-                    <div className="absolute top-3 left-3 z-10 bg-green-600 text-white text-[11px] font-medium py-1 px-2 rounded-md">
-                        {product.discount}
-                    </div>
-                )}
-                {product.badge && (
-                    <div className="absolute top-3 right-3 z-10 bg-red-600 text-white text-[11px] font-medium py-1 px-2 rounded-md">
-                        {product.badge}
-                    </div>
-                )}
-                <div className="group block relative">
-                    <div className="img-one">
-                        <Image
-                            src={resolveBackendImageSrc(product.imgOne, "/images/fallback-image.png")}
-                            alt={product.title}
-                            className="rounded-xl overflow-hidden transition-opacity duration-300 group-hover:opacity-0"
-                            width={290}
-                            height={435}
-                        />
-                    </div>
-                    <div className="img-two absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <Image
-                            src={resolveBackendImageSrc(product.imgTwo, resolveBackendImageSrc(product.imgOne, "/images/fallback-image.png") as string)}
-                            alt={product.title}
-                            className="rounded-xl overflow-hidden"
-                            width={290}
-                            height={435}
-                        />
-                    </div>
-                </div>
-            </div>
+  <div className="relative overflow-hidden rounded-xl bg-productcard-gradient">
+    {product.discount && (
+        <div className="absolute top-3 left-3 z-10 bg-green-600 text-white text-[11px] font-medium py-1 px-2 rounded-md">
+            {product.discount}
+        </div>
+    )}
+
+    {product.badge && (
+        <div className="absolute top-3 right-3 z-10 bg-red-600 text-white text-[11px] font-medium py-1 px-2 rounded-md">
+            {product.badge}
+        </div>
+    )}
+
+    <div className="relative aspect-square sm:aspect-[4/5] w-full overflow-hidden rounded-xl">
+        <Image
+            src={`https://admin.odokho.com/${product.imgOne}`}
+            alt={product.title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="object-cover object-center transition-all duration-300 group-hover:scale-105 group-hover:opacity-0"
+        />
+
+        <Image
+            src={`https://admin.odokho.com/${product.imgTwo || product.imgOne}`}
+            alt={product.title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="absolute inset-0 object-cover object-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
+        />
+    </div>
+</div>
 
             {/* product content */}
             <div className="mb-1">

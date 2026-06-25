@@ -155,9 +155,9 @@ export default function SingleProductPage({ params }: { params: Promise<{ slug: 
     const filledStars = Math.round(rating);
 
     const galleryImages = ([
-        resolveBackendImageSrc(product.imgOne, "/images/fallback-image.png"),
-        resolveBackendImageSrc(product.imgTwo, resolveBackendImageSrc(product.imgOne, "/images/fallback-image.png")),
-    ] as Array<string | import("next/image").StaticImageData>).filter(Boolean);
+        `https://admin.odokho.com/${product.imgOne}`,
+        `https://admin.odokho.com/${product.imgTwo || product.imgOne}`,
+    ] as Array<string>).filter(Boolean);
 
     const handleAddToCart = () => {
         if (!inStock) return;
