@@ -1771,7 +1771,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
           contactPhone,
           latitude: c.lat,
           longitude: c.lng,
-          locationLabel: issueLabel,
+          alertType: issueLabel,
         }),
       });
       const j = await res.json();
@@ -1809,7 +1809,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
           otp,
           latitude: coords.lat,
           longitude: coords.lng,
-          locationLabel: issueLabel,
+          alertType: issueLabel,
         }),
       });
       const j = await res.json();
