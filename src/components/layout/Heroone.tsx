@@ -6,7 +6,6 @@ import TopCarousel from "../ui/TopCarousel";
 import { Skeleton } from "../ui/Skeleton";
 import { resolveBackendImageSrc } from "@/lib/resolveBackendImageSrc";
 import img from "../../../public/images/right-banner-bg.webp";
-import shap from "../../../public/images/shap1.webp";
 
 interface HeroContent {
   id?: string;
@@ -128,13 +127,6 @@ export default function HeroOne() {
 
   return (
     <div className="banner-wrap relative overflow-x-clip overflow-y-visible bg-home-one-gradient-banner pb-8 pt-[calc(7rem+var(--maintenance-banner-offset,0px))] font-dm sm:pb-10 sm:pt-[calc(7.5rem+var(--maintenance-banner-offset,0px))] lg:pb-16 lg:pt-[calc(5.5rem+var(--maintenance-banner-offset,0px))]">
-      <Image
-        src={shap}
-        alt=""
-        width={800}
-        height={600}
-        className="pointer-events-none absolute top-0 left-1/2 max-h-[min(80vw,28rem)] w-auto max-w-[100vw] -translate-x-1/2 object-cover object-center opacity-20"
-      />
       <div className="mx-auto max-w-screen-xl min-w-0 px-4 sm:px-6 md:px-14 lg:px-14 xl:px-18 2xl:px-3 pb-0">
         <div className="relative z-10 grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10 lg:pt-6">
           {/* left side */}

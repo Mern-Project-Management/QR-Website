@@ -16,13 +16,9 @@ import { Zap } from "react-feather";
 import FeatureCard from "@/components/ui/FeatureCard4";
 import PageTitle2 from "@/components/ui/PageTitle2";
 import ContactSection from "../(site)/contact/ContactSection";
-import img from "../../../public/images/home-bg-3.webp";
-import img2 from "../../../public/images/about-5.webp";
-import img3 from "../../../public/images/about-6.webp";
+import bannerImage from "../../../public/images/right-banner-bg.webp";
+import avatarImage from "../../../public/images/logo/icon-logo.png";
 import Link from "next/link";
-import a1 from "../../../public/images/avater-11.webp";
-import a2 from "../../../public/images/avater-12.webp";
-import a3 from "../../../public/images/avater-13.webp";
 // Helper to get video ID from YouTube URL
 const getYouTubeVideoId = (url: string) => {
     let videoId = '';
@@ -125,7 +121,7 @@ export default function HomePage() {
                         <div className="w-full" data-aos-duration="400" data-aos="fade-up">
                             <div className="overflow-hidden relative rounded-xl h-64 sm:h-80 lg:h-[350px]">
                                 <Image
-                                    src={img}
+                                    src={bannerImage}
                                     alt="about"
                                     width={416}
                                     height={350}
@@ -190,7 +186,7 @@ export default function HomePage() {
                             {/* left side */}
                             <div className="relative w-full h-72 sm:h-96 md:h-[615px] rounded-xl">
                                 <Image
-                                    src={img2}
+                                    src={bannerImage}
                                     alt="banner"
                                     fill
                                     sizes="(max-width: 768px) 100vw,  (max-width: 1200px) 50vw,  33vw"
@@ -202,7 +198,7 @@ export default function HomePage() {
                             <div className="space-y-4 sm:space-y-6">
                                 <div className="relative w-full h-56 sm:h-72 md:h-[319px] rounded-xl">
                                     <Image
-                                        src={img3}
+                                        src={bannerImage}
                                         alt="banner"
                                         fill
                                         sizes="(max-width: 768px) 100vw,  (max-width: 1200px) 50vw,  33vw"
@@ -215,7 +211,7 @@ export default function HomePage() {
                                         {/* Avatar group  */}
                                         <div className="flex -space-x-4">
                                             <Image
-                                                src={a1}
+                                                src={avatarImage}
                                                 width={48}
                                                 height={48}
                                                 alt="member-avatar"
@@ -223,7 +219,7 @@ export default function HomePage() {
                                                 loading="lazy"
                                             />
                                             <Image
-                                                src={a2}
+                                                src={avatarImage}
                                                 width={48}
                                                 height={48}
                                                 alt="member-avatar"
@@ -231,7 +227,7 @@ export default function HomePage() {
                                                 loading="lazy"
                                             />
                                             <Image
-                                                src={a3}
+                                                src={avatarImage}
                                                 width={48}
                                                 height={48}
                                                 alt="member-avatar"
@@ -239,7 +235,7 @@ export default function HomePage() {
                                                 loading="lazy"
                                             />
                                             <Image
-                                                src={a1}
+                                                src={avatarImage}
                                                 width={48}
                                                 height={48}
                                                 alt="member-avatar"
