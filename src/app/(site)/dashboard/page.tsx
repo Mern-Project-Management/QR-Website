@@ -309,6 +309,7 @@ export default function DashboardPage() {
 
   // Edit contact form state
   const [editForm, setEditForm] = useState<OwnerProfile | null>(null);
+  const [editEmailLocked, setEditEmailLocked] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [editError, setEditError] = useState<string>("");
   const [editFieldErrors, setEditFieldErrors] = useState<OwnerProfileFieldErrors>({});
@@ -412,6 +413,7 @@ export default function DashboardPage() {
       ...qr.ownerProfile,
       emergencyContacts: normalizeEmergencyContacts(qr.ownerProfile?.emergencyContacts as unknown),
     });
+    setEditEmailLocked(Boolean(qr.ownerProfile?.email?.trim()));
     setEditError("");
     setEditFieldErrors({});
     setIsEditContactModalOpen(true);
@@ -863,10 +865,12 @@ export default function DashboardPage() {
           qr={selectedQR}
           form={editForm}
           setForm={setEditForm}
+          emailLocked={editEmailLocked}
           onClose={() => {
             setIsEditContactModalOpen(false);
             setEditError("");
             setEditFieldErrors({});
+            setEditEmailLocked(false);
           }}
           onSave={handleSaveContact}
           saving={savingContact}
@@ -1176,6 +1180,7 @@ function EditContactModal({
   qr,
   form,
   setForm,
+  emailLocked,
   onClose,
   onSave,
   saving,
@@ -1189,6 +1194,7 @@ function EditContactModal({
   qr: QRCodeData;
   form: OwnerProfile;
   setForm: (form: OwnerProfile) => void;
+  emailLocked: boolean;
   onClose: () => void;
   onSave: () => void;
   saving: boolean;
@@ -1208,7 +1214,6 @@ function EditContactModal({
   };
 
   const fieldError = (field: keyof OwnerProfileFieldErrors) => fieldErrors[field];
-  const emailIsLocked = Boolean(form.email?.trim());
 
   return createPortal(
     <div className={MODAL_OVERLAY}>
@@ -1268,14 +1273,14 @@ function EditContactModal({
                     value={form.email || ""}
                     onChange={(e) => updateField("email", e.target.value)}
                     className={
-                      emailIsLocked
+                      emailLocked
                         ? fieldError("email")
                           ? `${FORM_INPUT_DISABLED} border-red-300`
                           : FORM_INPUT_DISABLED
                         : formInputClass(!!fieldError("email"))
                     }
-                    disabled={emailIsLocked}
-                    placeholder={emailIsLocked ? undefined : "Enter email (optional)"}
+                    disabled={emailLocked}
+                    placeholder={emailLocked ? undefined : "Enter email (optional)"}
                     aria-invalid={!!fieldError("email")}
                   />
                   {fieldError("email") ? (

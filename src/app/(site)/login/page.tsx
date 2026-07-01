@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense, useRef, useCallback } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { safeImageSrc } from '@/lib/safeImageSrc';
 import { CUSTOMER_LOGIN_REQUEST_OTP, CUSTOMER_LOGIN_VERIFY_OTP } from '@/lib/customerAuthPaths';
+import { redirectAfterAuth, resolveCallbackUrl } from '@/lib/authRedirect';
 
 /* ─────────────────────────────────────────────
    SVG Illustration  (mirrors register style)
@@ -145,7 +146,6 @@ function validateLoginIdentifier(value: string, kind: IdentifierKind | null): st
 ───────────────────────────────────────────── */
 function LoginContent() {
     const { status } = useSession();
-    const router = useRouter();
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState<null | 'send' | 'verify' | 'resend'>(null);
     const [showOtpInput, setShowOtpInput] = useState(false);
@@ -155,19 +155,21 @@ function LoginContent() {
     const [info, setInfo] = useState<string>('');
     const [resendIn, setResendIn] = useState<number>(0);
     const otpRef = useRef<HTMLInputElement | null>(null);
+    const redirectingRef = useRef(false);
+
+    const callbackUrl = resolveCallbackUrl(searchParams.get('callbackUrl'));
+
+    const completeAuthRedirect = useCallback(async () => {
+        if (redirectingRef.current) return;
+        redirectingRef.current = true;
+        await redirectAfterAuth(callbackUrl);
+    }, [callbackUrl]);
 
     useEffect(() => {
         if (status === 'authenticated') {
-            let callbackUrl = searchParams.get('callbackUrl') || '/';
-            try {
-                const url = new URL(callbackUrl, window.location.origin);
-                callbackUrl = url.pathname + url.search + url.hash;
-            } catch {
-                // Ignore parsing errors
-            }
-            router.push(callbackUrl);
+            void completeAuthRedirect();
         }
-    }, [status, router, searchParams]);
+    }, [status, completeAuthRedirect]);
 
     useEffect(() => {
         if (showOtpInput) {
@@ -274,14 +276,8 @@ function LoginContent() {
                 return;
             }
             if (result?.ok) {
-                let callbackUrl = searchParams.get('callbackUrl') || '/';
-                try {
-                    const url = new URL(callbackUrl, window.location.origin);
-                    callbackUrl = url.pathname + url.search + url.hash;
-                } catch {
-                    // Ignore parsing errors
-                }
-                router.push(callbackUrl);
+                setInfo('Signed in successfully. Redirecting…');
+                await completeAuthRedirect();
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -572,7 +568,7 @@ function LoginContent() {
                     <p className="text-center text-gray-500 dark:text-white/30 text-sm mt-8">
                         Don&apos;t have an account?{' '}
                         <Link
-                            href={`/register?callbackUrl=${searchParams.get('callbackUrl') || ''}`}
+                            href={`/register?callbackUrl=${encodeURIComponent(searchParams.get('callbackUrl') || '/')}`}
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold transition underline underline-offset-2">
                             Sign up
                         </Link>
