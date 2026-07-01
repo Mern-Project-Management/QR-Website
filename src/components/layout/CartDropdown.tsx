@@ -302,10 +302,10 @@ export default function CartDropdown() {
                     role="dialog"
                     aria-label="Cart"
                     data-cart-dropdown-panel
-                    className={`fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-none ${
+                    className={`fixed left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-1rem)] bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden flex flex-col sm:max-h-[min(32rem,calc(100dvh-var(--maintenance-banner-offset,0px)-1.5rem))] ${
                         showCelebration && celebrationMessage
-                            ? "top-[calc(4.25rem+var(--maintenance-banner-offset,0px)+5.25rem)] sm:top-auto"
-                            : "top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:top-auto"
+                            ? "top-[calc(4.25rem+var(--maintenance-banner-offset,0px)+5.25rem)] sm:top-auto max-h-[calc(100dvh-var(--maintenance-banner-offset,0px)-10rem)]"
+                            : "top-[calc(4.25rem+var(--maintenance-banner-offset,0px))] sm:top-auto max-h-[calc(100dvh-var(--maintenance-banner-offset,0px)-4.75rem)]"
                     }`}
                 >
                     {celebrationBanner ? (
@@ -335,7 +335,7 @@ export default function CartDropdown() {
                         </div>
                     ) : (
                         <>
-                            <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4.5 py-1 sm:py-2 divide-y divide-gray-100">
+                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-4.5 py-1 sm:py-2 divide-y divide-gray-100">
                                 {cart.map((item) => (
                                     <div
                                         key={item.product.id}
