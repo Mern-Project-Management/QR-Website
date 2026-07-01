@@ -56,6 +56,36 @@ interface OwnerProfile {
   emergencyContacts?: EmergencyContact[] | null;
 }
 
+type OwnerProfileFieldErrors = Partial<Pick<OwnerProfile, "fullName" | "email" | "phone" | "address">>;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEditOwnerProfile(form: OwnerProfile): OwnerProfileFieldErrors {
+  const errors: OwnerProfileFieldErrors = {};
+
+  if (!form.fullName?.trim()) {
+    errors.fullName = "Full name is required.";
+  }
+
+  const email = form.email?.trim() ?? "";
+  if (email && !EMAIL_PATTERN.test(email)) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  const phoneDigits = (form.phone || "").replace(/\D/g, "");
+  if (!phoneDigits) {
+    errors.phone = "Phone number is required.";
+  } else if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+    errors.phone = "Enter a valid phone number (8-15 digits).";
+  }
+
+  if (!form.address?.trim()) {
+    errors.address = "Address is required.";
+  }
+
+  return errors;
+}
+
 interface QRCodeData {
   id: number;
   uniqueId: string;
@@ -281,6 +311,7 @@ export default function DashboardPage() {
   const [editForm, setEditForm] = useState<OwnerProfile | null>(null);
   const [savingContact, setSavingContact] = useState(false);
   const [editError, setEditError] = useState<string>("");
+  const [editFieldErrors, setEditFieldErrors] = useState<OwnerProfileFieldErrors>({});
 
   // Delete state
   const [deleting, setDeleting] = useState(false);
@@ -382,6 +413,7 @@ export default function DashboardPage() {
       emergencyContacts: normalizeEmergencyContacts(qr.ownerProfile?.emergencyContacts as unknown),
     });
     setEditError("");
+    setEditFieldErrors({});
     setIsEditContactModalOpen(true);
   };
 
@@ -409,11 +441,19 @@ export default function DashboardPage() {
   const handleSaveContact = async () => {
     if (!selectedQR || !editForm) return;
 
+    const fieldErrors = validateEditOwnerProfile(editForm);
+    if (Object.keys(fieldErrors).length > 0) {
+      setEditFieldErrors(fieldErrors);
+      setEditError("Please fix the highlighted fields before saving.");
+      return;
+    }
+
     const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
     if (!accessToken) return;
 
     setSavingContact(true);
     setEditError("");
+    setEditFieldErrors({});
     try {
       const res = await fetch(`/api/backend/my-qrs/${selectedQR.uniqueId}/activation`, {
         method: "PUT",
@@ -826,10 +866,21 @@ export default function DashboardPage() {
           onClose={() => {
             setIsEditContactModalOpen(false);
             setEditError("");
+            setEditFieldErrors({});
           }}
           onSave={handleSaveContact}
           saving={savingContact}
           error={editError}
+          fieldErrors={editFieldErrors}
+          onClearFieldError={(field) => {
+            setEditFieldErrors((prev) => {
+              if (!prev[field]) return prev;
+              const next = { ...prev };
+              delete next[field];
+              return next;
+            });
+            setEditError("");
+          }}
           addEmergencyContact={addEmergencyContact}
           removeEmergencyContact={removeEmergencyContact}
           updateEmergencyContact={updateEmergencyContact}
@@ -885,6 +936,8 @@ const FORM_INPUT =
   "box-border w-full min-w-0 max-w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all";
 const FORM_INPUT_DISABLED =
   `${FORM_INPUT} bg-gray-100 text-gray-500 cursor-not-allowed focus:border-gray-200 focus:ring-0`;
+const formInputClass = (hasError?: boolean) =>
+  hasError ? `${FORM_INPUT} border-red-300 focus:border-red-500 focus:ring-red-200` : FORM_INPUT;
 const FORM_GRID_2 = "grid grid-cols-1 md:grid-cols-2 gap-4";
 const FORM_GRID_3 = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4";
 
@@ -1127,6 +1180,8 @@ function EditContactModal({
   onSave,
   saving,
   error,
+  fieldErrors = {},
+  onClearFieldError,
   addEmergencyContact,
   removeEmergencyContact,
   updateEmergencyContact,
@@ -1138,13 +1193,22 @@ function EditContactModal({
   onSave: () => void;
   saving: boolean;
   error?: string;
+  fieldErrors?: OwnerProfileFieldErrors;
+  onClearFieldError?: (field: keyof OwnerProfileFieldErrors) => void;
   addEmergencyContact: () => void;
   removeEmergencyContact: (index: number) => void;
   updateEmergencyContact: (index: number, field: keyof EmergencyContact, value: string) => void;
 }) {
   const updateField = (field: keyof OwnerProfile, value: string) => {
     setForm({ ...form, [field]: value });
+    const ownerField = field as keyof OwnerProfileFieldErrors;
+    if (onClearFieldError && fieldErrors[ownerField]) {
+      onClearFieldError(ownerField);
+    }
   };
+
+  const fieldError = (field: keyof OwnerProfileFieldErrors) => fieldErrors[field];
+  const emailIsLocked = Boolean(form.email?.trim());
 
   return createPortal(
     <div className={MODAL_OVERLAY}>
@@ -1177,27 +1241,46 @@ function EditContactModal({
                     type="text"
                     value={form.fullName || ""}
                     onChange={(e) => updateField("fullName", e.target.value)}
-                    className={FORM_INPUT}
-                    required
+                    className={formInputClass(!!fieldError("fullName"))}
+                    aria-invalid={!!fieldError("fullName")}
                   />
+                  {fieldError("fullName") ? (
+                    <p className="mt-1 text-xs text-red-600" role="alert">{fieldError("fullName")}</p>
+                  ) : null}
                 </div>
                 <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Phone *</label>
                   <input
                     type="tel"
                     value={form.phone || ""}
-                    className={FORM_INPUT_DISABLED}
+                    className={fieldError("phone") ? `${FORM_INPUT_DISABLED} border-red-300` : FORM_INPUT_DISABLED}
                     disabled
+                    aria-invalid={!!fieldError("phone")}
                   />
+                  {fieldError("phone") ? (
+                    <p className="mt-1 text-xs text-red-600" role="alert">{fieldError("phone")}</p>
+                  ) : null}
                 </div>
                 <div className={FORM_FIELD}>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
                   <input
                     type="email"
                     value={form.email || ""}
-                    className={FORM_INPUT_DISABLED}
-                    disabled
+                    onChange={(e) => updateField("email", e.target.value)}
+                    className={
+                      emailIsLocked
+                        ? fieldError("email")
+                          ? `${FORM_INPUT_DISABLED} border-red-300`
+                          : FORM_INPUT_DISABLED
+                        : formInputClass(!!fieldError("email"))
+                    }
+                    disabled={emailIsLocked}
+                    placeholder={emailIsLocked ? undefined : "Enter email (optional)"}
+                    aria-invalid={!!fieldError("email")}
                   />
+                  {fieldError("email") ? (
+                    <p className="mt-1 text-xs text-red-600" role="alert">{fieldError("email")}</p>
+                  ) : null}
                 </div>
                 <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Address *</label>
@@ -1205,9 +1288,12 @@ function EditContactModal({
                     type="text"
                     value={form.address || ""}
                     onChange={(e) => updateField("address", e.target.value)}
-                    className={FORM_INPUT}
-                    required
+                    className={formInputClass(!!fieldError("address"))}
+                    aria-invalid={!!fieldError("address")}
                   />
+                  {fieldError("address") ? (
+                    <p className="mt-1 text-xs text-red-600" role="alert">{fieldError("address")}</p>
+                  ) : null}
                 </div>
               </div>
             </div>
