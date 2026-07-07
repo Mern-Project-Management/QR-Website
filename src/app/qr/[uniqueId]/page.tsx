@@ -28,6 +28,12 @@ import {
 } from "lucide-react";
 import { getAdminImageOrigin, getAdminOrigin } from "@/lib/adminOrigin";
 import {
+  GEO_LOCATION_REQUIRED_MESSAGE,
+  getGeoCoords,
+  resolveGeoCoords,
+  type GeoCoords,
+} from "@/lib/geolocation";
+import {
   formatOtpCooldownMessage,
   parseCooldownFromMessage,
   useCountdown,
@@ -1389,17 +1395,32 @@ function VerifyNumberView({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [callData, setCallData] = useState<{ did: string; connectionId: string } | null>(null);
+  const [geoCoords, setGeoCoords] = useState<GeoCoords | null>(null);
+  const [locating, setLocating] = useState(false);
+  const needsMapLocation = mode === "sms" && isVehicleQrCategory(category);
 
-  const getCoords = useCallback(async (): Promise<{ lat: string | null; lng: string | null }> => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return { lat: null, lng: null };
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
-        () => resolve({ lat: null, lng: null }),
-        { timeout: 6000 },
-      );
+  useEffect(() => {
+    if (!needsMapLocation) return;
+    let cancelled = false;
+    void getGeoCoords().then((coords) => {
+      if (cancelled || !coords.lat || !coords.lng) return;
+      setGeoCoords({ lat: coords.lat, lng: coords.lng });
     });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [needsMapLocation]);
+
+  const captureLocation = useCallback(async (forceFresh = false): Promise<GeoCoords | null> => {
+    setLocating(true);
+    try {
+      const resolved = await resolveGeoCoords(geoCoords, forceFresh);
+      if (resolved) setGeoCoords(resolved);
+      return resolved;
+    } finally {
+      setLocating(false);
+    }
+  }, [geoCoords]);
 
   const title = mode === "sms" ? "Verify for SMS" : "Verify for call";
   const Icon = mode === "sms" ? MessageCircle : Phone;
@@ -1447,7 +1468,7 @@ function VerifyNumberView({
     setBusy(true);
     try {
       const endpoint = mode === "call" ? "masked-call" : "contact";
-      const coords = mode === "sms" ? await getCoords() : { lat: null, lng: null };
+      const coords = mode === "sms" ? await captureLocation() : null;
       const res = await fetch(`/api/public/qr/${uniqueId}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1457,8 +1478,8 @@ function VerifyNumberView({
             : {
                 contactPhone: phone,
                 requestOtp: true,
-                latitude: coords.lat,
-                longitude: coords.lng,
+                latitude: coords?.lat ?? null,
+                longitude: coords?.lng ?? null,
               },
         ),
       });
@@ -1518,7 +1539,11 @@ function VerifyNumberView({
           setError(json.message || "Could not allocate masked number");
         }
       } else {
-        const coords = await getCoords();
+        const coords = needsMapLocation ? await captureLocation() : null;
+        if (needsMapLocation && !coords) {
+          setError(GEO_LOCATION_REQUIRED_MESSAGE);
+          return;
+        }
         const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1528,8 +1553,8 @@ function VerifyNumberView({
             reason,
             reasonLabel,
             ...(visitorName ? { visitorName } : {}),
-            latitude: coords.lat,
-            longitude: coords.lng,
+            latitude: coords?.lat ?? null,
+            longitude: coords?.lng ?? null,
           }),
         });
         const json = await res.json();
@@ -1569,6 +1594,36 @@ function VerifyNumberView({
       {reasonLabel && (
         <div className="mb-5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
           <span className="font-semibold text-slate-800">Reason:</span> {reasonLabel}
+        </div>
+      )}
+
+      {needsMapLocation && step !== "ready" && (
+        <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <div className="flex items-start gap-2">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Location required</p>
+              <p className="mt-1 text-blue-800">
+                The owner SMS includes a Google Maps link to this spot. Keep this tab open while we detect GPS.
+              </p>
+              <p className="mt-2 text-xs text-blue-700">
+                {locating
+                  ? "Detecting location…"
+                  : geoCoords
+                    ? "Location ready."
+                    : "Waiting for GPS — allow location if the browser asks."}
+              </p>
+              {!geoCoords && !locating && (
+                <button
+                  type="button"
+                  onClick={() => void captureLocation(true)}
+                  className="mt-2 text-xs font-bold underline"
+                >
+                  Retry location
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1740,7 +1795,35 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
     setSelectedIssue(issues[0]?.id ?? "other");
   }, [issues]);
   const [useLocation, setUseLocation] = useState(true);
-  const [coords, setCoords] = useState<{ lat: string | null; lng: string | null }>({ lat: null, lng: null });
+  const [coords, setCoords] = useState<GeoCoords | null>(null);
+  const [locating, setLocating] = useState(false);
+  const needsMapLocation = useLocation && (isBikeQrCategory(category) || isCarQrCategory(category));
+
+  useEffect(() => {
+    if (!needsMapLocation) return;
+    let cancelled = false;
+    void getGeoCoords().then((c) => {
+      if (cancelled || !c.lat || !c.lng) return;
+      setCoords({ lat: c.lat, lng: c.lng });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsMapLocation]);
+
+  const captureLocation = useCallback(async (forceFresh = false): Promise<GeoCoords | null> => {
+    if (!useLocation) return null;
+    setLocating(true);
+    try {
+      const resolved = await resolveGeoCoords(coords, forceFresh);
+      if (resolved) setCoords(resolved);
+      return resolved;
+    } finally {
+      setLocating(false);
+    }
+  }, [coords, useLocation]);
+
+  const issueLabel = issues.find((i) => i.id === selectedIssue)?.label || "Emergency";
 
   const [contactPhone, setContactPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -1749,27 +1832,11 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // cooldown countdown
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
-
-  const getCoords = useCallback(async (): Promise<{ lat: string | null; lng: string | null }> => {
-    if (!useLocation || typeof navigator === "undefined" || !navigator.geolocation) {
-      return { lat: null, lng: null };
-    }
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
-        () => resolve({ lat: null, lng: null }),
-        { timeout: 6000 },
-      );
-    });
-  }, [useLocation]);
-
-  const issueLabel = issues.find((i) => i.id === selectedIssue)?.label || "Emergency";
 
   const requestOtp = async () => {
     setError("");
@@ -1781,16 +1848,15 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
 
     setBusy(true);
     try {
-      const c = await getCoords();
-      setCoords(c);
+      const c = needsMapLocation ? await captureLocation() : null;
 
       const res = await fetch(`/api/public/qr/${uniqueId}/emergency`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contactPhone,
-          latitude: c.lat,
-          longitude: c.lng,
+          latitude: c?.lat ?? null,
+          longitude: c?.lng ?? null,
           alertType: issueLabel,
         }),
       });
@@ -1821,14 +1887,20 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
 
     setBusy(true);
     try {
+      const c = needsMapLocation ? (await captureLocation()) ?? coords : null;
+      if (needsMapLocation && !c) {
+        setError(GEO_LOCATION_REQUIRED_MESSAGE);
+        return;
+      }
+
       const res = await fetch(`/api/public/qr/${uniqueId}/emergency`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contactPhone,
           otp,
-          latitude: coords.lat,
-          longitude: coords.lng,
+          latitude: c?.lat ?? null,
+          longitude: c?.lng ?? null,
           alertType: issueLabel,
         }),
       });
