@@ -1390,6 +1390,17 @@ function VerifyNumberView({
   const [success, setSuccess] = useState("");
   const [callData, setCallData] = useState<{ did: string; connectionId: string } | null>(null);
 
+  const getCoords = useCallback(async (): Promise<{ lat: string | null; lng: string | null }> => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return { lat: null, lng: null };
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
+        () => resolve({ lat: null, lng: null }),
+        { timeout: 6000 },
+      );
+    });
+  }, []);
+
   const title = mode === "sms" ? "Verify for SMS" : "Verify for call";
   const Icon = mode === "sms" ? MessageCircle : Phone;
 
@@ -1436,13 +1447,19 @@ function VerifyNumberView({
     setBusy(true);
     try {
       const endpoint = mode === "call" ? "masked-call" : "contact";
+      const coords = mode === "sms" ? await getCoords() : { lat: null, lng: null };
       const res = await fetch(`/api/public/qr/${uniqueId}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           mode === "call"
             ? { callerNumber: phone, requestOtp: true }
-            : { contactPhone: phone, requestOtp: true },
+            : {
+                contactPhone: phone,
+                requestOtp: true,
+                latitude: coords.lat,
+                longitude: coords.lng,
+              },
         ),
       });
       const json = await res.json();
@@ -1501,6 +1518,7 @@ function VerifyNumberView({
           setError(json.message || "Could not allocate masked number");
         }
       } else {
+        const coords = await getCoords();
         const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1510,6 +1528,8 @@ function VerifyNumberView({
             reason,
             reasonLabel,
             ...(visitorName ? { visitorName } : {}),
+            latitude: coords.lat,
+            longitude: coords.lng,
           }),
         });
         const json = await res.json();
