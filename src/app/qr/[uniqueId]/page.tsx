@@ -1579,8 +1579,10 @@ function VerifyNumberView({
     if (!needsMapLocation) return;
     let cancelled = false;
     void getGeoCoords().then((coords) => {
-      if (cancelled || !coords.lat || !coords.lng) return;
-      setGeoCoords({ lat: coords.lat, lng: coords.lng, accuracy: coords.accuracy });
+      if (cancelled) return;
+      if (coords.lat && coords.lng) {
+        setGeoCoords({ lat: coords.lat, lng: coords.lng, accuracy: coords.accuracy });
+      }
     });
     return () => {
       cancelled = true;
@@ -1644,7 +1646,7 @@ function VerifyNumberView({
     setBusy(true);
     try {
       const endpoint = mode === "call" ? "masked-call" : "contact";
-      const coords = mode === "sms" ? await captureLocation() : null;
+      const coords = mode === "sms" ? (await captureLocation()) ?? geoCoords : null;
       const res = await fetch(`/api/public/qr/${uniqueId}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1716,7 +1718,7 @@ function VerifyNumberView({
           setError(json.message || "Could not allocate masked number");
         }
       } else {
-        const coords = needsMapLocation ? await captureLocation() : null;
+        const coords = needsMapLocation ? (await captureLocation()) ?? geoCoords : null;
         const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
