@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { getAdminImageOrigin, getAdminOrigin } from "@/lib/adminOrigin";
 import {
-  GEO_LOCATION_REQUIRED_MESSAGE,
+  GEO_LOCATION_HINT_MESSAGE,
   getGeoCoords,
   resolveGeoCoords,
   type GeoCoords,
@@ -38,6 +38,7 @@ import {
   parseCooldownFromMessage,
   useCountdown,
 } from "@/hooks/useCountdown";
+import { INDIAN_MOBILE_ERROR, isValidIndianMobile, normalizeIndianMobile } from "@/lib/indianPhone";
 import { isStaffSession } from "@/lib/resolveUserRole";
 import {
   getCategoryAccentClasses,
@@ -633,7 +634,7 @@ function PhoneInput({
         type="tel"
         inputMode="numeric"
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 15))}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
         className={INPUT}
         placeholder={placeholder}
         autoComplete="tel"
@@ -751,6 +752,13 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
   // personal
   const [fullName, setFullName] = useState<string>(prefill?.name || "");
   const [phone, setPhone] = useState<string>("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneOtpBusy, setPhoneOtpBusy] = useState(false);
+  const [phoneOtpError, setPhoneOtpError] = useState("");
+  const { remaining: phoneOtpCooldown, isActive: phoneOtpCooldownActive, start: startPhoneOtpCooldown } =
+    useCountdown();
   const [email, setEmail] = useState<string>(prefill?.email || "");
   const [address, setAddress] = useState<string>("");
   const [customOwnerMessage, setCustomOwnerMessage] = useState("");
@@ -772,6 +780,78 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
   // emergency
   const [emergency1, setEmergency1] = useState("");
   const [emergency2, setEmergency2] = useState("");
+
+  const normalizedOwnerPhone = useMemo(() => normalizeIndianMobile(phone), [phone]);
+  const ownerPhoneValid = isValidIndianMobile(phone);
+
+  useEffect(() => {
+    setPhoneVerified(false);
+    setPhoneOtpSent(false);
+    setPhoneOtp("");
+    setPhoneOtpError("");
+  }, [normalizedOwnerPhone]);
+
+  const requestOwnerPhoneOtp = async () => {
+    setPhoneOtpError("");
+    if (!ownerPhoneValid) {
+      setPhoneOtpError(INDIAN_MOBILE_ERROR);
+      return;
+    }
+
+    setPhoneOtpBusy(true);
+    try {
+      const res = await fetch(`/api/public/qr/${uniqueId}/activate/phone-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalizedOwnerPhone, requestOtp: true }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        const parsedCooldown =
+          typeof json.cooldown === "number" ? json.cooldown : parseCooldownFromMessage(json.message || "");
+        if (parsedCooldown) startPhoneOtpCooldown(parsedCooldown);
+        setPhoneOtpError(json.message || "Failed to send OTP");
+        return;
+      }
+      setPhoneOtpSent(true);
+      startPhoneOtpCooldown(30);
+      if (json.otp) setPhoneOtpError(`OTP sent (dev): ${json.otp}`);
+    } catch {
+      setPhoneOtpError("Network error. Please try again.");
+    } finally {
+      setPhoneOtpBusy(false);
+    }
+  };
+
+  const verifyOwnerPhoneOtp = async () => {
+    setPhoneOtpError("");
+    if (!/^\d{4,8}$/.test(phoneOtp)) {
+      setPhoneOtpError("Enter the OTP sent to your mobile number.");
+      return;
+    }
+
+    setPhoneOtpBusy(true);
+    try {
+      const res = await fetch(`/api/public/qr/${uniqueId}/activate/phone-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalizedOwnerPhone, otp: phoneOtp }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setPhoneOtpError(json.message || "OTP verification failed");
+        return;
+      }
+      setPhoneVerified(true);
+      setPhoneOtpSent(false);
+      setPhoneOtp("");
+      setPhoneOtpError("");
+    } catch {
+      setPhoneOtpError("Network error. Please try again.");
+    } finally {
+      setPhoneOtpBusy(false);
+    }
+  };
 
   const heading = isVehicle
     ? isBikeQrCategory(category)
@@ -797,8 +877,24 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
     e.preventDefault();
     setError("");
 
+    if (!isValidIndianMobile(phone)) {
+      setError(INDIAN_MOBILE_ERROR);
+      return;
+    }
+    if (!phoneVerified) {
+      setError("Please verify your mobile number with OTP before activating.");
+      return;
+    }
     if (!emergency1.trim()) {
       setError("Please enter at least one emergency contact number.");
+      return;
+    }
+    if (!isValidIndianMobile(emergency1)) {
+      setError(INDIAN_MOBILE_ERROR);
+      return;
+    }
+    if (emergency2.trim() && !isValidIndianMobile(emergency2)) {
+      setError(INDIAN_MOBILE_ERROR);
       return;
     }
     if (
@@ -942,6 +1038,75 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
             <div>
               <label className={LABEL}>Mobile number</label>
               <PhoneInput value={phone} onChange={setPhone} required />
+              {phone.length >= 10 && !ownerPhoneValid && (
+                <p className="mt-1.5 text-xs text-amber-700">{INDIAN_MOBILE_ERROR}</p>
+              )}
+              {ownerPhoneValid && !phoneVerified && (
+                <div className="mt-3 space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                  {!phoneOtpSent ? (
+                    <button
+                      type="button"
+                      onClick={() => void requestOwnerPhoneOtp()}
+                      disabled={phoneOtpBusy || phoneOtpCooldownActive}
+                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {phoneOtpBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      {phoneOtpCooldownActive ? formatOtpCooldownMessage(phoneOtpCooldown) : "Send OTP to verify"}
+                    </button>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Enter OTP</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={8}
+                          value={phoneOtp}
+                          onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                          className={`${INPUT} mt-1`}
+                          placeholder="6-digit OTP"
+                          autoComplete="one-time-code"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void verifyOwnerPhoneOtp()}
+                          disabled={phoneOtpBusy}
+                          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {phoneOtpBusy ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                          )}
+                          Verify OTP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void requestOwnerPhoneOtp()}
+                          disabled={phoneOtpBusy || phoneOtpCooldownActive}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {phoneOtpCooldownActive ? formatOtpCooldownMessage(phoneOtpCooldown) : "Resend OTP"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {phoneVerified && (
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  Mobile number verified
+                </p>
+              )}
+              {phoneOtpError && !phoneOtpError.startsWith("OTP sent (dev)") && (
+                <p className="mt-1.5 text-xs text-red-600">{phoneOtpError}</p>
+              )}
+              {phoneOtpError.startsWith("OTP sent (dev)") && (
+                <p className="mt-1.5 text-xs text-blue-600">{phoneOtpError}</p>
+              )}
             </div>
             <div>
               <label className={LABEL}>
@@ -1090,12 +1255,18 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
             <div>
               <label className={LABEL}>Contact 1</label>
               <PhoneInput value={emergency1} onChange={setEmergency1} required placeholder="Primary emergency" />
+              {emergency1.length >= 10 && !isValidIndianMobile(emergency1) && (
+                <p className="mt-1.5 text-xs text-amber-700">{INDIAN_MOBILE_ERROR}</p>
+              )}
             </div>
             <div>
               <label className={LABEL}>
                 Contact 2 <span className="font-normal text-slate-400">(optional)</span>
               </label>
               <PhoneInput value={emergency2} onChange={setEmergency2} placeholder="Secondary emergency" />
+              {emergency2.length >= 10 && !isValidIndianMobile(emergency2) && (
+                <p className="mt-1.5 text-xs text-amber-700">{INDIAN_MOBILE_ERROR}</p>
+              )}
             </div>
           </div>
         </FormSection>
@@ -1103,10 +1274,15 @@ function ActivateSection({ uniqueId, category, categories, prefill }: ActivateSe
         {error && <AlertBanner tone="error">{error}</AlertBanner>}
 
         <div className="sticky bottom-0 -mx-4 border-t border-slate-200/80 bg-white/95 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6">
-          <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+          <button type="submit" disabled={saving || !phoneVerified} className={BTN_PRIMARY}>
             <Sparkles className="h-4 w-4" />
             {saving ? "Activating…" : "Activate QR"}
           </button>
+          {!phoneVerified && !saving && (
+            <p className="mt-2 text-center text-xs text-amber-700">
+              Verify your mobile number with OTP to enable activation.
+            </p>
+          )}
           <p className="mt-3 text-center text-xs text-slate-500">By activating you agree to our privacy-first contact policy.</p>
         </div>
       </form>
@@ -1227,7 +1403,7 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
               <p className="mt-2 break-words text-sm capitalize text-slate-600">{display.category}</p>
             )}
           </div>
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:h-24 sm:w-24">
+          {/* <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:h-24 sm:w-24">
             <Image
               src={display.imageSrc}
               alt={display.primaryTitle}
@@ -1236,7 +1412,7 @@ function ContactSection({ uniqueId, data, categories }: ContactSectionProps) {
               className="object-contain p-2"
               unoptimized={display.imageSrc.startsWith("http")}
             />
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -1404,7 +1580,7 @@ function VerifyNumberView({
     let cancelled = false;
     void getGeoCoords().then((coords) => {
       if (cancelled || !coords.lat || !coords.lng) return;
-      setGeoCoords({ lat: coords.lat, lng: coords.lng });
+      setGeoCoords({ lat: coords.lat, lng: coords.lng, accuracy: coords.accuracy });
     });
     return () => {
       cancelled = true;
@@ -1480,6 +1656,7 @@ function VerifyNumberView({
                 requestOtp: true,
                 latitude: coords?.lat ?? null,
                 longitude: coords?.lng ?? null,
+                accuracy: coords?.accuracy ?? null,
               },
         ),
       });
@@ -1540,10 +1717,6 @@ function VerifyNumberView({
         }
       } else {
         const coords = needsMapLocation ? await captureLocation() : null;
-        if (needsMapLocation && !coords) {
-          setError(GEO_LOCATION_REQUIRED_MESSAGE);
-          return;
-        }
         const res = await fetch(`/api/public/qr/${uniqueId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1555,6 +1728,7 @@ function VerifyNumberView({
             ...(visitorName ? { visitorName } : {}),
             latitude: coords?.lat ?? null,
             longitude: coords?.lng ?? null,
+            accuracy: coords?.accuracy ?? null,
           }),
         });
         const json = await res.json();
@@ -1602,16 +1776,14 @@ function VerifyNumberView({
           <div className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <p className="font-semibold">Location required</p>
-              <p className="mt-1 text-blue-800">
-                The owner SMS includes a Google Maps link to this spot. Keep this tab open while we detect GPS.
-              </p>
+              <p className="font-semibold">Share location (optional)</p>
+              <p className="mt-1 text-blue-800">{GEO_LOCATION_HINT_MESSAGE}</p>
               <p className="mt-2 text-xs text-blue-700">
                 {locating
                   ? "Detecting location…"
                   : geoCoords
                     ? "Location ready."
-                    : "Waiting for GPS — allow location if the browser asks."}
+                    : "GPS not detected yet — you can still continue."}
               </p>
               {!geoCoords && !locating && (
                 <button
@@ -1804,7 +1976,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
     let cancelled = false;
     void getGeoCoords().then((c) => {
       if (cancelled || !c.lat || !c.lng) return;
-      setCoords({ lat: c.lat, lng: c.lng });
+      setCoords({ lat: c.lat, lng: c.lng, accuracy: c.accuracy });
     });
     return () => {
       cancelled = true;
@@ -1857,6 +2029,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
           contactPhone,
           latitude: c?.lat ?? null,
           longitude: c?.lng ?? null,
+          accuracy: c?.accuracy ?? null,
           alertType: issueLabel,
         }),
       });
@@ -1888,10 +2061,6 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
     setBusy(true);
     try {
       const c = needsMapLocation ? (await captureLocation()) ?? coords : null;
-      if (needsMapLocation && !c) {
-        setError(GEO_LOCATION_REQUIRED_MESSAGE);
-        return;
-      }
 
       const res = await fetch(`/api/public/qr/${uniqueId}/emergency`, {
         method: "POST",
@@ -1901,6 +2070,7 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
           otp,
           latitude: c?.lat ?? null,
           longitude: c?.lng ?? null,
+          accuracy: c?.accuracy ?? null,
           alertType: issueLabel,
         }),
       });
