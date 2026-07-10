@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
-import { CheckCircle, Download, Eye, Loader, ShoppingBag, X, Award, UserCheck } from "react-feather";
+import { AlertCircle, CheckCircle, Download, Eye, Loader, ShoppingBag, X, Award, UserCheck } from "react-feather";
 import { createPortal } from "react-dom";
 
 type OrderItem = {
@@ -54,6 +54,25 @@ const formatDate = (iso?: string | null) => {
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "2-digit" });
 };
+
+const formatOrderId = (id: string) => {
+  if (id.length <= 14) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+};
+
+const splitDisplayName = (name?: string | null) => {
+  const parts = (name || "Customer").trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || "Customer";
+  const lastName = parts.slice(1).join(" ") || "-";
+  return { firstName, lastName };
+};
+
+const ORDER_ISSUE_TYPES = [
+  { value: "wrong_item", label: "Wrong item received" },
+  { value: "missing_order", label: "Missing order / not delivered" },
+  { value: "delivery_issue", label: "Delivery issue" },
+  { value: "other", label: "Other problem" },
+] as const;
 
 const statusStyles = (status?: string | null) => {
   const s = (status || "").toUpperCase();
@@ -199,6 +218,12 @@ export default function OrdersPage() {
 
   const [mounted, setMounted] = useState(false);
   const [activeInvoiceOrder, setActiveInvoiceOrder] = useState<OrderRow | null>(null);
+  const [reportOrder, setReportOrder] = useState<OrderRow | null>(null);
+  const [reportIssueType, setReportIssueType] = useState<string>(ORDER_ISSUE_TYPES[0].value);
+  const [reportMessage, setReportMessage] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -295,6 +320,74 @@ export default function OrdersPage() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
+  const openReportModal = (order: OrderRow) => {
+    setReportOrder(order);
+    setReportIssueType(ORDER_ISSUE_TYPES[0].value);
+    setReportMessage("");
+    setReportError("");
+    setReportSuccess(false);
+  };
+
+  const closeReportModal = () => {
+    if (reportSubmitting) return;
+    setReportOrder(null);
+    setReportError("");
+    setReportSuccess(false);
+  };
+
+  const submitOrderReport = async () => {
+    if (!reportOrder) return;
+    const details = reportMessage.trim();
+    if (!details) {
+      setReportError("Please describe the issue so our support team can help.");
+      return;
+    }
+
+    const email = session?.user?.email?.trim();
+    if (!email) {
+      setReportError("Your account email is missing. Please log in again.");
+      return;
+    }
+
+    const { firstName, lastName } = splitDisplayName(session?.user?.name);
+    const issueLabel = ORDER_ISSUE_TYPES.find((t) => t.value === reportIssueType)?.label || reportIssueType;
+
+    setReportSubmitting(true);
+    setReportError("");
+    try {
+      const res = await fetch("/api/backend/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          inquiryType: "Order Support",
+          message: [
+            `Order ID: ${reportOrder.id}`,
+            `Order date: ${formatDate(reportOrder.createdAt)}`,
+            `Order total: ${formatMoney(reportOrder.totalAmount)}`,
+            `Issue type: ${issueLabel}`,
+            "",
+            "Details:",
+            details,
+          ].join("\n"),
+        }),
+      });
+
+      const json = (await res.json().catch(() => null)) as { message?: string } | null;
+      if (!res.ok) {
+        throw new Error(json?.message || "Failed to submit your report. Please try again.");
+      }
+
+      setReportSuccess(true);
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   if (status === "loading") {
     return (
       <div className={`${PAGE_TOP_PADDING} pb-12 max-w-screen-xl mx-auto px-4 font-dm flex justify-center items-center min-h-[60vh]`}>
@@ -309,7 +402,7 @@ export default function OrdersPage() {
   return (
     <>
       <section className={`border-b border-slate-200/70 bg-light-blue-banner pb-4 sm:pb-6 ${PAGE_TOP_PADDING}`}>
-        <div className="max-w-screen mx-auto font-dm">
+        <div className="max-w-screen-xl mx-auto px-3 sm:px-6 lg:px-8 font-dm">
           <PageTitle title="My Orders" subtitle="Track your purchases and invoices">
             <div className="flex justify-center text-center">
               <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "My Orders" }]} variant="light" />
@@ -318,7 +411,7 @@ export default function OrdersPage() {
         </div>
       </section>
 
-      <div className="pt-6 pb-20 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 font-dm">
+      <div className="overflow-x-hidden pt-6 pb-20 max-w-screen-xl mx-auto px-3 sm:px-6 lg:px-8 font-dm">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
@@ -391,60 +484,71 @@ export default function OrdersPage() {
           <>
             {/* Desktop table */}
             <div className="hidden lg:block bg-white rounded-2xl border border-gray-150/80 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-150/80 bg-gray-50/50 flex items-center justify-between">
+              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-150/80 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-base font-extrabold text-gray-900">Order History</h3>
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-100">
-                  Showing {orders.length} orders
+                  Showing {orders.length} order{orders.length === 1 ? "" : "s"}
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-100">
+                <table className="min-w-[920px] w-full divide-y divide-gray-100">
                   <thead className="bg-gray-50">
-                    <tr className="text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
-                      <th className="px-6 py-4">Order ID</th>
-                      <th className="px-6 py-4">Order Date</th>
-                      <th className="px-6 py-4">Total Amount</th>
-                      <th className="px-6 py-4">Order Status</th>
-                      <th className="px-6 py-4">Payment Info</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                    <tr className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      <th className="px-5 py-4 w-[22%]">Order ID</th>
+                      <th className="px-4 py-4 w-[14%]">Order Date</th>
+                      <th className="px-4 py-4 w-[12%]">Total</th>
+                      <th className="px-4 py-4 w-[14%]">Status</th>
+                      <th className="px-4 py-4 w-[12%]">Payment</th>
+                      <th className="px-5 py-4 text-right w-[26%]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
                     {orders.map((o) => (
-                      <tr key={o.id} className="hover:bg-blue-50/20 transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="font-extrabold text-gray-900 text-sm flex items-center gap-1">
-                            <span className="text-blue-900">#</span>{o.id}
+                      <tr key={o.id} className="hover:bg-blue-50/20 transition-colors align-top">
+                        <td className="px-5 py-4">
+                          <div
+                            className="font-mono text-sm font-bold text-gray-900 truncate max-w-[220px]"
+                            title={o.id}
+                          >
+                            <span className="text-blue-900">#</span>
+                            {formatOrderId(o.id)}
                           </div>
                           <div className="text-xs text-gray-400 mt-1.5 font-medium">
-                            {o.items?.length || 0} product{o.items?.length === 1 ? "" : "s"} purchased
+                            {o.items?.length || 0} product{o.items?.length === 1 ? "" : "s"}
                           </div>
                         </td>
-                        <td className="px-6 py-5 text-sm font-semibold text-gray-700">{formatDate(o.createdAt)}</td>
-                        <td className="px-6 py-5 text-sm font-extrabold text-gray-900">{formatMoney(o.totalAmount)}</td>
-                        <td className="px-6 py-5">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm ${statusStyles(o.status)}`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
+                        <td className="px-4 py-4 text-sm font-semibold text-gray-700 whitespace-nowrap">{formatDate(o.createdAt)}</td>
+                        <td className="px-4 py-4 text-sm font-extrabold text-gray-900 whitespace-nowrap">{formatMoney(o.totalAmount)}</td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-bold shadow-sm whitespace-nowrap ${statusStyles(o.status)}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5" />
                             {String(o.status || "PENDING")}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm">
+                        <td className="px-4 py-4 text-sm">
                           <div className="font-bold text-gray-800 uppercase tracking-wide text-xs">{o.paymentMethod || "-"}</div>
                           <div className="text-[11px] text-gray-400 mt-1 font-semibold">{o.paymentStatus || "-"}</div>
                         </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-end gap-2.5">
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openReportModal(o)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-[11px] transition-all active:scale-95"
+                            >
+                              <AlertCircle size={14} /> Report Issue
+                            </button>
                             <button
                               type="button"
                               onClick={() => setActiveInvoiceOrder(o)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-[11px] transition-all shadow-sm active:scale-95"
                             >
-                              <Eye size={14} /> View Invoice
+                              <Eye size={14} /> Invoice
                             </button>
                             <button
                               type="button"
                               onClick={() => downloadInvoice(o)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-[11px] transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                             >
                               <Download size={14} /> PDF
                             </button>
@@ -463,7 +567,9 @@ export default function OrdersPage() {
                 <div key={o.id} className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-extrabold text-gray-900 truncate">#{o.id}</p>
+                      <p className="text-sm font-extrabold text-gray-900 font-mono truncate" title={o.id}>
+                        #{formatOrderId(o.id)}
+                      </p>
                       <p className="text-xs text-gray-400 mt-1.5 font-semibold">{formatDate(o.createdAt)} · {o.items?.length || 0} items</p>
                     </div>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm ${statusStyles(o.status)}`}>
@@ -483,18 +589,25 @@ export default function OrdersPage() {
                     </div>
                   </div>
  
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openReportModal(o)}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-all active:scale-95"
+                    >
+                      <AlertCircle size={14} /> Report Issue
+                    </button>
                     <button
                       type="button"
                       onClick={() => setActiveInvoiceOrder(o)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
                     >
                       <Eye size={14} /> View Invoice
                     </button>
                     <button
                       type="button"
                       onClick={() => downloadInvoice(o)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                     >
                       <Download size={14} /> Download
                     </button>
@@ -657,6 +770,128 @@ export default function OrdersPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Report issue modal */}
+      {mounted &&
+        reportOrder &&
+        createPortal(
+          <div className="fixed inset-0 z-[10070]">
+            <div className="absolute inset-0 bg-black/60" aria-hidden onClick={closeReportModal} />
+            <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+              <div
+                className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="report-order-title"
+              >
+                <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Raise support response</p>
+                    <p id="report-order-title" className="text-lg font-extrabold text-gray-900 truncate">
+                      Order #{formatOrderId(reportOrder.id)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeReportModal}
+                    disabled={reportSubmitting}
+                    className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    aria-label="Close report form"
+                  >
+                    <X size={18} className="text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="p-5 sm:p-6">
+                  {reportSuccess ? (
+                    <div className="text-center py-4">
+                      <div className="mx-auto w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                        <CheckCircle size={28} />
+                      </div>
+                      <h3 className="mt-4 text-xl font-bold text-gray-900">Report submitted</h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Our support team will review your order issue and get back to you at{" "}
+                        <span className="font-semibold text-gray-800">{session?.user?.email}</span>.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={closeReportModal}
+                        className="mt-6 inline-flex items-center justify-center px-6 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Tell us what went wrong with this order. Include any details that will help us resolve it faster.
+                      </p>
+
+                      <div className="mt-5">
+                        <label htmlFor="report-issue-type" className="block text-sm font-semibold text-gray-800 mb-2">
+                          Issue type
+                        </label>
+                        <select
+                          id="report-issue-type"
+                          value={reportIssueType}
+                          onChange={(e) => setReportIssueType(e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
+                        >
+                          {ORDER_ISSUE_TYPES.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mt-4">
+                        <label htmlFor="report-issue-details" className="block text-sm font-semibold text-gray-800 mb-2">
+                          Describe the issue
+                        </label>
+                        <textarea
+                          id="report-issue-details"
+                          rows={4}
+                          value={reportMessage}
+                          onChange={(e) => setReportMessage(e.target.value)}
+                          placeholder="e.g. I received the wrong QR sticker size, or my package has not arrived yet."
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-900/20 resize-y min-h-[110px]"
+                        />
+                      </div>
+
+                      {reportError ? (
+                        <p className="mt-3 text-sm font-medium text-red-600" role="alert">
+                          {reportError}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={closeReportModal}
+                          disabled={reportSubmitting}
+                          className="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-semibold transition-all disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void submitOrderReport()}
+                          disabled={reportSubmitting}
+                          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-60"
+                        >
+                          {reportSubmitting ? <Loader size={16} className="animate-spin" /> : <AlertCircle size={16} />}
+                          Submit report
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
