@@ -550,6 +550,27 @@ function BlockedSection({
   category?: string;
   categories?: QrCategoryItem[];
 }) {
+  const [supportPhone, setSupportPhone] = useState("+91-730 494 5821");
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFooterPhone = async () => {
+      try {
+        const res = await fetch("/api/backend/footer");
+        const json = await res.json();
+        if (!cancelled && json.success && json.data?.phone) {
+          setSupportPhone(json.data.phone);
+        }
+      } catch {
+        // Keep default support number on failure.
+      }
+    };
+    loadFooterPhone();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className={PAGE}>
       <QrPageHeader badge="Inactive" category={category} categories={categories} />
@@ -567,7 +588,7 @@ function BlockedSection({
           <Headset className="h-5 w-5" />
           Contact support
         </Link>
-        <a href="tel:+911234567890" className={BTN_SECONDARY}>
+        <a href={`tel:${supportPhone.replace(/[^\d+]/g, "")}`} className={BTN_SECONDARY}>
           <Phone className="h-5 w-5" />
           Call support
         </a>
@@ -1962,7 +1983,28 @@ function getEmergencyIssues(category: string) {
 function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categories }: ReportEmergencyViewProps) {
   const issues = useMemo(() => getEmergencyIssues(category), [category]);
 
-  const [step, setStep] = useState<"form" | "verify">("form");
+  const [step, setStep] = useState<"form" | "verify" | "sent">("form");
+  const [alertResult, setAlertResult] = useState<{ message: string; notifyTarget?: string } | null>(null);
+  const [supportPhone, setSupportPhone] = useState("+91-730 494 5821");
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFooterPhone = async () => {
+      try {
+        const res = await fetch("/api/backend/footer");
+        const json = await res.json();
+        if (!cancelled && json.success && json.data?.phone) {
+          setSupportPhone(json.data.phone);
+        }
+      } catch {
+        // Keep default support number on failure.
+      }
+    };
+    loadFooterPhone();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [selectedIssue, setSelectedIssue] = useState(issues[0]?.id ?? "other");
 
   useEffect(() => {
@@ -2081,8 +2123,8 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
         setError(j.message || "Verification failed");
         return;
       }
-      setSuccess("Emergency alert sent. Help is on the way.");
-      setTimeout(() => setView("contact"), 1800);
+      setAlertResult({ message: j.message || "Owner and emergency contacts have been notified", notifyTarget: j.data?.notifyTarget });
+      setStep("sent");
     } catch (e) {
       console.error(e);
       setError("Network error. Please try again.");
@@ -2095,13 +2137,15 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
     <div className={PAGE}>
       <QrFlowNav current="emergency" />
       <QrPageHeader
-        title={step === "verify" ? "Confirm emergency" : "Report emergency"}
+        title={step === "sent" ? "Alert sent" : step === "verify" ? "Confirm emergency" : "Report emergency"}
         subtitle={
-          assetLabel
-            ? `Urgent alert for ${assetLabel}. Owner and emergency contacts will be notified.`
-            : "Help the owner and their emergency contacts immediately."
+          step === "sent"
+            ? alertResult?.message
+            : assetLabel
+              ? `Urgent alert for ${assetLabel}. Owner and emergency contacts will be notified.`
+              : "Help the owner and their emergency contacts immediately."
         }
-        onBack={() => (step === "verify" ? setStep("form") : setView("contact"))}
+        onBack={() => (step === "verify" ? setStep("form") : step === "form" ? setView("contact") : undefined)}
         badge="Urgent"
         category={category}
         categories={categories}
@@ -2236,6 +2280,31 @@ function ReportEmergencyView({ setView, uniqueId, assetLabel, category, categori
           </button>
           <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
             Cancel
+          </button>
+        </div>
+      )}
+
+      {step === "sent" && (
+        <div className="space-y-5 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" aria-hidden />
+          </div>
+          <AlertBanner tone="success">
+            {alertResult?.notifyTarget === "owner_and_emergency_contacts"
+              ? "The owner and emergency contacts have been informed. Help is on the way."
+              : alertResult?.notifyTarget === "emergency_contacts"
+                ? "The owner could not be reached, but their emergency contacts have been informed."
+                : alertResult?.message || "The owner has been informed."}
+          </AlertBanner>
+          <p className="text-sm text-slate-600">
+            Need immediate help? You can also call our support team directly.
+          </p>
+          <a href={`tel:${supportPhone.replace(/[^\d+]/g, "")}`} className={BTN_PRIMARY}>
+            <Phone className="h-5 w-5" />
+            Call support
+          </a>
+          <button type="button" onClick={() => setView("contact")} className={BTN_SECONDARY}>
+            Done
           </button>
         </div>
       )}

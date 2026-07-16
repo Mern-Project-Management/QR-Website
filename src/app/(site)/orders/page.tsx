@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import PageTitle from "@/components/ui/PageTitle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PAGE_TOP_PADDING } from "@/lib/siteLayout";
-import { AlertCircle, CheckCircle, Download, Eye, Loader, ShoppingBag, X, Award, UserCheck } from "react-feather";
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Download, Eye, Loader, ShoppingBag, X, Award, UserCheck } from "react-feather";
 import { createPortal } from "react-dom";
 
 type OrderItem = {
@@ -73,6 +73,8 @@ const ORDER_ISSUE_TYPES = [
   { value: "delivery_issue", label: "Delivery issue" },
   { value: "other", label: "Other problem" },
 ] as const;
+
+const ORDERS_PER_PAGE = 10;
 
 const statusStyles = (status?: string | null) => {
   const s = (status || "").toUpperCase();
@@ -215,6 +217,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [mounted, setMounted] = useState(false);
   const [activeInvoiceOrder, setActiveInvoiceOrder] = useState<OrderRow | null>(null);
@@ -297,6 +300,17 @@ export default function OrdersPage() {
       return sum + (Number.isFinite(n) ? n : 0);
     }, 0);
   }, [orders]);
+
+  const totalPages = Math.max(1, Math.ceil(orders.length / ORDERS_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [orders.length]);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * ORDERS_PER_PAGE;
+    return orders.slice(start, start + ORDERS_PER_PAGE);
+  }, [orders, currentPage]);
 
   const downloadInvoice = (order: OrderRow) => {
     const html = buildInvoiceHtml(order);
@@ -487,7 +501,8 @@ export default function OrdersPage() {
               <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-150/80 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-base font-extrabold text-gray-900">Order History</h3>
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-100">
-                  Showing {orders.length} order{orders.length === 1 ? "" : "s"}
+                  Showing {paginatedOrders.length ? (currentPage - 1) * ORDERS_PER_PAGE + 1 : 0}-
+                  {(currentPage - 1) * ORDERS_PER_PAGE + paginatedOrders.length} of {orders.length} order{orders.length === 1 ? "" : "s"}
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -503,7 +518,7 @@ export default function OrdersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
-                    {orders.map((o) => (
+                    {paginatedOrders.map((o) => (
                       <tr key={o.id} className="hover:bg-blue-50/20 transition-colors align-top">
                         <td className="px-5 py-4">
                           <div
@@ -563,7 +578,7 @@ export default function OrdersPage() {
 
             {/* Mobile / tablet cards */}
             <div className="lg:hidden grid grid-cols-1 gap-4">
-              {orders.map((o) => (
+              {paginatedOrders.map((o) => (
                 <div key={o.id} className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -615,6 +630,47 @@ export default function OrdersPage() {
                 </div>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} /> Prev
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl font-bold text-sm transition-all ${
+                        p === currentPage
+                          ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20"
+                          : "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

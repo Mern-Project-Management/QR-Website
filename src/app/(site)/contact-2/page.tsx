@@ -84,7 +84,7 @@ export default function ContactPage() {
                                                     htmlFor="firstName"
                                                     className="block text-gray-900 text-base font-medium mb-2"
                                                 >
-                                                    First name
+                                                    First name <span className="text-red-500">*</span>
                                                 </label>
                                                 <input
                                                     type="text"
@@ -100,7 +100,7 @@ export default function ContactPage() {
                                                     htmlFor="lastName"
                                                     className="block text-gray-900 text-base font-medium mb-2"
                                                 >
-                                                    Last name
+                                                    Last name <span className="text-red-500">*</span>
                                                 </label>
                                                 <input
                                                     type="text"
@@ -118,7 +118,7 @@ export default function ContactPage() {
                                                 htmlFor="email"
                                                 className="block text-gray-900 text-base font-medium mb-2"
                                             >
-                                                Enter email address
+                                                Enter email address <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="email"
@@ -151,7 +151,7 @@ export default function ContactPage() {
                                                 htmlFor="message"
                                                 className="block text-gray-900 text-base font-medium mb-2"
                                             >
-                                                Put the message
+                                                Put the message <span className="text-red-500">*</span>
                                             </label>
                                             <textarea
                                                 id="message"

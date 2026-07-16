@@ -22,12 +22,15 @@ import {
   Calendar,
   Clock,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "react-feather";
 import Image from "next/image";
 import { QrCode, Car, Scan } from "lucide-react";
 import { createPortal } from "react-dom";
 
 const ADMIN_ORIGIN = "https://admin.odokho.com";
+const QR_CODES_PER_PAGE = 2;
 
 // Types
 interface EmergencyContact {
@@ -299,6 +302,7 @@ export default function DashboardPage() {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modals state
   const [selectedQR, setSelectedQR] = useState<QRCodeData | null>(null);
@@ -334,8 +338,8 @@ export default function DashboardPage() {
         const data = await res.json();
         const active = Array.isArray(data)
           ? (data as CategoryItem[])
-              .filter((cat) => cat.is_active !== false && cat.image)
-              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            .filter((cat) => cat.is_active !== false && cat.image)
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
           : [];
         if (!cancelled) setCategories(active);
       } catch (e) {
@@ -401,6 +405,17 @@ export default function DashboardPage() {
     const totalScans = qrCodes.reduce((sum, qr) => sum + (qr.scans || 0), 0);
     return { total, active, dndActive, totalScans };
   }, [qrCodes]);
+
+  const totalPages = Math.max(1, Math.ceil(qrCodes.length / QR_CODES_PER_PAGE));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [qrCodes.length]);
+
+  const paginatedQrCodes = useMemo(() => {
+    const start = (currentPage - 1) * QR_CODES_PER_PAGE;
+    return qrCodes.slice(start, start + QR_CODES_PER_PAGE);
+  }, [qrCodes, currentPage]);
 
   const openContactModal = (qr: QRCodeData) => {
     setSelectedQR(qr);
@@ -549,10 +564,10 @@ export default function DashboardPage() {
           prev.map((qr) =>
             qr.id === selectedQR.id
               ? {
-                  ...qr,
-                  isDndActive: json.data.isDndActive,
-                  dndUntil: json.data.dndUntil,
-                }
+                ...qr,
+                isDndActive: json.data.isDndActive,
+                dndUntil: json.data.dndUntil,
+              }
               : qr
           )
         );
@@ -629,7 +644,7 @@ export default function DashboardPage() {
               <QrCode size={22} className="hidden sm:block" />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide sm:tracking-widest leading-snug">Active QRs</p>
@@ -700,58 +715,59 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {qrCodes.map((qr) => (
-              <div
-                key={qr.id}
-                className="bg-white rounded-2xl border border-gray-150/85 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200"
-              >
-                {/* Card Header */}
-                <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/20">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <CategoryIcon category={qr.category} categories={categories} size="md" />
-                      <div className="min-w-0">
-                        <h3 className="text-base font-extrabold text-gray-900 break-words">{qr.assetName}</h3>
-                        <p className="text-xs text-gray-400 mt-1 font-semibold break-all">ID: {qr.uniqueId}</p>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {paginatedQrCodes.map((qr) => (
+                <div
+                  key={qr.id}
+                  className="bg-white rounded-2xl border border-gray-150/85 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200"
+                >
+                  {/* Card Header */}
+                  <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/20">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <CategoryIcon category={qr.category} categories={categories} size="md" />
+                        <div className="min-w-0">
+                          <h3 className="text-base font-extrabold text-gray-900 break-words">{qr.assetName}</h3>
+                          <p className="text-xs text-gray-400 mt-1 font-semibold break-all">ID: {qr.uniqueId}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider shadow-sm ${getStatusStyles(
+                            qr.status,
+                            qr.isActive
+                          )}`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />
+                          {qr.isActive ? "Active" : "Inactive"}
+                        </span>
+                        {qr.isDndActive && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide">
+                            <Moon size={10} className="mr-1" /> DND Mode
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5 sm:flex-col sm:items-end">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider shadow-sm ${getStatusStyles(
-                          qr.status,
-                          qr.isActive
-                        )}`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />
-                        {qr.isActive ? "Active" : "Inactive"}
-                      </span>
-                      {qr.isDndActive && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide">
-                          <Moon size={10} className="mr-1" /> DND Mode
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Body */}
-                <div className="px-4 py-4 sm:px-6 sm:py-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                    <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Asset Category</p>
-                      <p className="mt-1 text-sm font-extrabold text-gray-800 uppercase tracking-wide break-words">{qr.category}</p>
-                    </div>
-                    <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scans Count</p>
-                      <p className="mt-1 text-sm font-extrabold text-blue-900 flex items-center gap-1.5">
-                        <Scan size={14} className="text-blue-600" /> {qr.scans} scans
-                      </p>
-                    </div>
                   </div>
 
-                  {/* QR URL */}
-                  {/* <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80 mb-4">
+                  {/* Card Body */}
+                  <div className="px-4 py-4 sm:px-6 sm:py-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                      <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Asset Category</p>
+                        <p className="mt-1 text-sm font-extrabold text-gray-800 uppercase tracking-wide break-words">{qr.category}</p>
+                      </div>
+                      <div className="bg-gray-50/70 rounded-2xl p-3.5 sm:p-4 border border-gray-100/80 min-w-0">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scans Count</p>
+                        <p className="mt-1 text-sm font-extrabold text-blue-900 flex items-center gap-1.5">
+                          <Scan size={14} className="text-blue-600" /> {qr.scans} scans
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* QR URL */}
+                    {/* <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100/80 mb-4">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Secure Link</p>
                     <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-gray-250/60 shadow-inner">
                       <input
@@ -782,55 +798,54 @@ export default function DashboardPage() {
                     </div>
                   </div> */}
 
-                  {/* Created/Updated */}
-                  <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} className="text-gray-400" />
-                      Registered: {formatDate(qr.createdAt)}
-                    </span>
-                    {qr.dndUntil && qr.isDndActive && (
-                      <span className="flex items-center gap-1 text-amber-600 font-bold">
-                        <Clock size={12} />
-                        DND expires: {formatDate(qr.dndUntil)}
+                    {/* Created/Updated */}
+                    <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} className="text-gray-400" />
+                        Registered: {formatDate(qr.createdAt)}
                       </span>
-                    )}
+                      {qr.dndUntil && qr.isDndActive && (
+                        <span className="flex items-center gap-1 text-amber-600 font-bold">
+                          <Clock size={12} />
+                          DND expires: {formatDate(qr.dndUntil)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Card Actions */}
-                <div className="px-4 py-4 sm:px-6 sm:py-4.5 border-t border-gray-100 bg-gray-50/40">
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => openContactModal(qr)}
-                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
-                      style={{ cursor: "pointer" }}
-                    >
-                      <Eye size={14} /> View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditContactModal(qr)}
-                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-all shadow-sm active:scale-95"
-                      style={{ cursor: "pointer" }}
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openDndModal(qr)}
-                      className={`inline-flex w-full sm:w-auto col-span-2 sm:col-span-1 items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${
-                        qr.isDndActive
-                          ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-250/30"
-                          : "bg-blue-900 hover:bg-blue-800 text-white border border-blue-900"
-                      }`}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {qr.isDndActive ? <Sun size={14} /> : <Moon size={14} />}
-                      {qr.isDndActive ? "Disable DND" : "Setup DND"}
-                      
-                    </button>
-                    {/* <button
+                  {/* Card Actions */}
+                  <div className="px-4 py-4 sm:px-6 sm:py-4.5 border-t border-gray-100 bg-gray-50/40">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => openContactModal(qr)}
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <Eye size={14} /> View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEditContactModal(qr)}
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDndModal(qr)}
+                        className={`inline-flex w-full sm:w-auto col-span-2 sm:col-span-1 items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${qr.isDndActive
+                            ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-250/30"
+                            : "bg-blue-900 hover:bg-blue-800 text-white border border-blue-900"
+                          }`}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {qr.isDndActive ? <Sun size={14} /> : <Moon size={14} />}
+                        {qr.isDndActive ? "Disable DND" : "Setup DND"}
+
+                      </button>
+                      {/* <button
                       type="button"
                       onClick={() => openDeleteModal(qr)}
                       className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-all shadow-sm active:scale-95"
@@ -838,11 +853,52 @@ export default function DashboardPage() {
                     >
                       <Trash2 size={14} /> Delete
                     </button> */}
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} /> Prev
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl font-bold text-sm transition-all ${p === currentPage
+                          ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20"
+                          : "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  Next <ChevronRight size={16} />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1595,14 +1651,12 @@ function DndModal({
               <button
                 type="button"
                 onClick={() => setEnabled(!enabled)}
-                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors self-start sm:self-auto ${
-                  enabled ? "bg-amber-500" : "bg-gray-300"
-                }`}
+                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors self-start sm:self-auto ${enabled ? "bg-amber-500" : "bg-gray-300"
+                  }`}
               >
                 <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                    enabled ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </button>
             </div>
@@ -1636,16 +1690,16 @@ function DndModal({
                 disabled={toggling}
                 className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
-              {toggling ? (
-                <>
-                  <Loader size={16} className="animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={16} /> {enabled ? "Enable DND" : "Disable DND"}
-                </>
-              )}
-            </button>
+                {toggling ? (
+                  <>
+                    <Loader size={16} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} /> {enabled ? "Enable DND" : "Disable DND"}
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -1731,16 +1785,16 @@ function DeleteActivationModal({
                 disabled={deleting}
                 className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
               >
-              {deleting ? (
-                <>
-                  <Loader size={16} className="animate-spin" /> Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 size={16} /> Delete Activation
-                </>
-              )}
-            </button>
+                {deleting ? (
+                  <>
+                    <Loader size={16} className="animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} /> Delete Activation
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
