@@ -15,7 +15,7 @@ const PageTitle: React.FC<PageTitleProps> = ({ title, subtitle, children }) => {
                         {title}
                     </h2>
                     {subtitle && (
-                        <p className="mt-2 max-w-2xl text-pretty text-base font-medium leading-relaxed text-gray-600 break-words md:text-lg">
+                        <p className="mt-2 mx-auto max-w-2xl text-pretty text-base font-medium leading-relaxed text-gray-600 break-words md:text-lg">
                             {subtitle}
                         </p>
                     )}

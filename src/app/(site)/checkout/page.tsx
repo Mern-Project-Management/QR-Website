@@ -1005,7 +1005,7 @@ export default function CheckoutPage() {
                     <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide sm:tracking-widest mb-4 border-b pb-2 border-gray-100">Personal Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-1.5 min-w-0">
-                        <label className="text-sm font-medium text-gray-700">Full Name</label>
+                        <label className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></label>
                         <input
                           className={CHECKOUT_INPUT}
                           placeholder="John Doe"
@@ -1194,7 +1194,7 @@ export default function CheckoutPage() {
 
                         {/* Street */}
                         <div className="space-y-1.5 min-w-0">
-                          <label className="text-sm font-medium text-gray-700">Street Address</label>
+                          <label className="text-sm font-medium text-gray-700">Street Address <span className="text-red-500">*</span></label>
                           <div className="relative min-w-0">
                             <input
                               className={`${CHECKOUT_INPUT} pr-10`}
@@ -1211,7 +1211,7 @@ export default function CheckoutPage() {
                         {/* Pincode → India Post API */}
                         <div className="space-y-1.5 min-w-0">
                           <label className="text-sm font-medium text-gray-700 flex flex-wrap items-center gap-x-2 gap-y-1">
-                            Pincode
+                            Pincode <span className="text-red-500">*</span>
                             {pincodeLoading && (
                               <span className="flex items-center gap-1 text-xs text-blue-600 font-normal">
                                 <Loader size={11} className="animate-spin" /> Fetching location…
@@ -1238,7 +1238,7 @@ export default function CheckoutPage() {
                         {/* City & State — auto-filled, but editable */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                           <div className="space-y-1.5 min-w-0">
-                            <label className="text-sm font-medium text-gray-700">City / District</label>
+                            <label className="text-sm font-medium text-gray-700">City / District <span className="text-red-500">*</span></label>
                             <input
                               className={CHECKOUT_INPUT}
                               placeholder="Auto-filled"
@@ -1248,7 +1248,7 @@ export default function CheckoutPage() {
                             />
                           </div>
                           <div className="space-y-1.5 min-w-0">
-                            <label className="text-sm font-medium text-gray-700">State</label>
+                            <label className="text-sm font-medium text-gray-700">State <span className="text-red-500">*</span></label>
                             <input
                               className={CHECKOUT_INPUT}
                               placeholder="Auto-filled"
@@ -1260,7 +1260,7 @@ export default function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1.5 min-w-0">
-                          <label className="text-sm font-medium text-gray-700">Country</label>
+                          <label className="text-sm font-medium text-gray-700">Country <span className="text-red-500">*</span></label>
                           <input
                             className={CHECKOUT_INPUT}
                             value={addressData.country}

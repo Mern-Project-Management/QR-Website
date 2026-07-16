@@ -251,7 +251,10 @@ function RegisterContent() {
         value: string, onChange: (v: string) => void, extra?: object
     ) => (
         <div className="space-y-1.5">
-            <label htmlFor={id} className="block text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/50">{label}</label>
+            <label htmlFor={id} className="block text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/50">
+                {label}
+                {(extra as { required?: boolean } | undefined)?.required && <span className="text-red-500"> *</span>}
+            </label>
             <input
                 id={id} type={type} placeholder={placeholder} value={value}
                 onChange={e => onChange(e.target.value)}
@@ -446,7 +449,7 @@ function RegisterContent() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label htmlFor="otp" className="block text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/50">6-Digit Code</label>
+                                <label htmlFor="otp" className="block text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/50">6-Digit Code <span className="text-red-500">*</span></label>
                                 <input
                                     id="otp" type="text" placeholder="••••••"
                                     ref={otpRef}

@@ -68,7 +68,7 @@ function Heroseven() {
                                                 htmlFor="firstName"
                                                 className="block text-mmd font-medium text-gray-100 mb-2"
                                             >
-                                                First name
+                                                First name <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -84,7 +84,7 @@ function Heroseven() {
                                                 htmlFor="lastName"
                                                 className="block text-mmd font-medium text-gray-100 mb-2"
                                             >
-                                                Last name
+                                                Last name <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -103,7 +103,7 @@ function Heroseven() {
                                             htmlFor="email"
                                             className="block text-mmd font-medium text-gray-100 mb-2"
                                         >
-                                            Enter email address
+                                            Enter email address <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="email"
@@ -172,7 +172,7 @@ function Heroseven() {
                                     htmlFor="firstName"
                                     className="block text-mmd font-medium text-gray-100 mb-2"
                                 >
-                                    First name
+                                    First name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -188,7 +188,7 @@ function Heroseven() {
                                     htmlFor="lastName"
                                     className="block text-mmd font-medium text-gray-100 mb-2"
                                 >
-                                    Last name
+                                    Last name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -207,7 +207,7 @@ function Heroseven() {
                                 htmlFor="email"
                                 className="block text-mmd font-medium text-gray-100 mb-2"
                             >
-                                Enter email address
+                                Enter email address <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="email"
