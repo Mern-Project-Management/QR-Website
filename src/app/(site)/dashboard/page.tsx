@@ -100,6 +100,7 @@ interface QRCodeData {
   dndUntil: string | null;
   isDndActive: boolean;
   createdAt: string;
+  activatedAt: string | null;
   updatedAt: string;
   expiresAt: string | null;
   defaultImagePath: string;
@@ -200,10 +201,10 @@ function CategoryIcon({
   const matched = findCategoryForQr(category, categories);
   const isSmall = size === "sm";
   const boxClass = isSmall
-    ? "h-14 w-14 shrink-0 rounded-2xl"
-    : "h-[4.5rem] w-[4.5rem] shrink-0 rounded-2xl sm:h-20 sm:w-20";
-  const iconSize = isSmall ? 24 : 28;
-  const imageSizes = isSmall ? "56px" : "80px";
+    ? "h-16 w-16 shrink-0 rounded-2xl"
+    : "h-24 w-24 shrink-0 rounded-2xl sm:h-28 sm:w-28";
+  const iconSize = isSmall ? 28 : 34;
+  const imageSizes = isSmall ? "64px" : "112px";
 
   const imageUrl = getCategoryImageUrl(matched?.image);
   if (imageUrl) {
@@ -802,7 +803,7 @@ export default function DashboardPage() {
                     <div className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium">
                       <span className="flex items-center gap-1">
                         <Calendar size={12} className="text-gray-400" />
-                        Registered: {formatDate(qr.createdAt)}
+                        Activated: {formatDate(qr.activatedAt ?? qr.createdAt)}
                       </span>
                       {qr.dndUntil && qr.isDndActive && (
                         <span className="flex items-center gap-1 text-amber-600 font-bold">
