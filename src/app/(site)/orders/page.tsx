@@ -437,7 +437,7 @@ export default function OrdersPage() {
               <ShoppingBag size={24} />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-6 hover:shadow-md transition-all flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Spent</p>
@@ -553,20 +553,20 @@ export default function OrdersPage() {
                             >
                               <AlertCircle size={14} /> Report Issue
                             </button>
-                            <button
+                            {/* <button
                               type="button"
                               onClick={() => setActiveInvoiceOrder(o)}
                               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-[11px] transition-all shadow-sm active:scale-95"
                             >
                               <Eye size={14} /> Invoice
-                            </button>
-                            <button
+                            </button> */}
+                            {/* <button
                               type="button"
                               onClick={() => downloadInvoice(o)}
                               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-[11px] transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                             >
                               <Download size={14} /> PDF
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>
@@ -591,7 +591,7 @@ export default function OrdersPage() {
                       {String(o.status || "PENDING")}
                     </span>
                   </div>
- 
+
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Amount</p>
@@ -603,7 +603,7 @@ export default function OrdersPage() {
                       <p className="text-[10px] text-gray-400 mt-0.5 font-semibold">{o.paymentStatus || "-"}</p>
                     </div>
                   </div>
- 
+
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       type="button"
@@ -650,11 +650,10 @@ export default function OrdersPage() {
                       type="button"
                       onClick={() => setCurrentPage(p)}
                       aria-current={p === currentPage ? "page" : undefined}
-                      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl font-bold text-sm transition-all ${
-                        p === currentPage
+                      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl font-bold text-sm transition-all ${p === currentPage
                           ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20"
                           : "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
-                      }`}
+                        }`}
                     >
                       {p}
                     </button>
