@@ -157,7 +157,13 @@ export default function ContactSection({ embedded = false }: { embedded?: boolea
                                                 type="tel"
                                                 id="phone"
                                                 name="phone"
-                                                placeholder="+91 0000 12345"
+                                                placeholder="9876543210"
+                                                inputMode="numeric"
+                                                maxLength={10}
+                                                onInput={(e) => {
+                                                    const input = e.currentTarget;
+                                                    input.value = input.value.replace(/\D/g, "").slice(0, 10);
+                                                }}
                                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900/20"
                                             />
                                         </div>

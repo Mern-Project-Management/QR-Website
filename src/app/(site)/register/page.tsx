@@ -405,8 +405,8 @@ function RegisterContent() {
                                 formData.email, (v) => setFormData({ ...formData, email: v }), { required: true }
                             )}
                             {field(
-                                "phone", "Phone Number", "tel", "+1 (555) 000-0000",
-                                formData.phone, (v) => setFormData({ ...formData, phone: v }), { required: true }
+                                "phone", "Phone Number", "tel", "9876543210",
+                                formData.phone, (v) => setFormData({ ...formData, phone: v.replace(/\D/g, "").slice(0, 10) }), { required: true, inputMode: "numeric", maxLength: 10 }
                             )}
 
                             {/* Terms */}
