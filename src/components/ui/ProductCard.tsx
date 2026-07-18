@@ -94,14 +94,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
                     </p>
 
                     {/* review */}
-                    {product.review && (
-                        <div className="flex items-center text-blue-500 mb-3 mt-2">
-                            <Star fill="blue" size={16} strokeWidth={0} />
-                            <span className="text-sm text-gray-600 font-medium leading-6 ml-1 inline-block">
-                                {product.review} Reviews
-                            </span>
-                        </div>
-                    )}
+                    <div className="flex items-center text-blue-500 mb-3 mt-2 min-h-[24px]">
+                        {product.review && (
+                            <>
+                                <Star fill="blue" size={16} strokeWidth={0} />
+                                <span className="text-sm text-gray-600 font-medium leading-6 ml-1 inline-block">
+                                    {product.review} Reviews
+                                </span>
+                            </>
+                        )}
+                    </div>
 
                     {/* short description */}
                     {product.shortDesc && (
@@ -186,14 +188,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, variant = "compact" 
                         </span>
                     )}
                 </p>
-                {product.review && (
-                    <div className="flex items-center text-blue-500 mb-1 mt-1">
-                        <Star fill="blue" size={15} strokeWidth={0} />
-                        <span className="text-xs text-gray-600 font-medium leading-6 ml-1 inline-block">
-                            {product.review}
-                        </span>
-                    </div>
-                )}
+                <div className="flex items-center text-blue-500 mb-1 mt-1 min-h-[21px]">
+                    {product.review && (
+                        <>
+                            <Star fill="blue" size={15} strokeWidth={0} />
+                            <span className="text-xs text-gray-600 font-medium leading-6 ml-1 inline-block">
+                                {product.review}
+                            </span>
+                        </>
+                    )}
+                </div>
                 <div className="flex flex-row gap-2 mt-3">
                     <Button
                         label={inStock ? "Add to Cart" : "Out of Stock"}

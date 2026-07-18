@@ -129,7 +129,7 @@ function normalizeLoginIdentifier(raw: string): { value: string; kind: Identifie
         return { value: raw.trim().toLowerCase(), kind: "email" };
     }
     if (kind === "phone") {
-        return { value: raw.replace(/\D/g, "").slice(0, 15), kind: "phone" };
+        return { value: raw.replace(/\D/g, "").slice(0, 10), kind: "phone" };
     }
     return { value: "", kind: null };
 }
@@ -140,7 +140,7 @@ function validateLoginIdentifier(value: string, kind: IdentifierKind | null): st
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Enter a valid email address";
         return null;
     }
-    if (!/^\d{8,15}$/.test(value)) return "Enter a valid mobile number (8–15 digits)";
+    if (!/^\d{10}$/.test(value)) return "Enter a valid 10-digit mobile number";
     return null;
 }
 
@@ -470,7 +470,10 @@ function LoginContent() {
                                 "text",
                                 "you@example.com or 9876543210",
                                 formData.identifier,
-                                (v) => setFormData({ ...formData, identifier: v }),
+                                (v) => setFormData({
+                                    ...formData,
+                                    identifier: detectIdentifierKind(v) === "phone" ? v.replace(/\D/g, "").slice(0, 10) : v,
+                                }),
                                 { required: true, autoComplete: "username", inputMode: "text" }
                             )}
 
