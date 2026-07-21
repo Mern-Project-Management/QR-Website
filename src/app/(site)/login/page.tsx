@@ -472,7 +472,10 @@ function LoginContent() {
                                 formData.identifier,
                                 (v) => setFormData({
                                     ...formData,
-                                    identifier: detectIdentifierKind(v) === "phone" ? v.replace(/\D/g, "").slice(0, 10) : v,
+                                    // Only auto-strip to digits when the input looks like a phone number
+                                    // (no letters/@ yet) — otherwise typing an email gets mangled before
+                                    // the user reaches the "@" character.
+                                    identifier: /^[\d\s()+-]*$/.test(v) ? v.replace(/\D/g, "").slice(0, 10) : v,
                                 }),
                                 { required: true, autoComplete: "username", inputMode: "text" }
                             )}
