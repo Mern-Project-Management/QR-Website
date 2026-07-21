@@ -55,6 +55,54 @@ const formatDate = (iso?: string | null) => {
   return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "2-digit" });
 };
 
+const formatItemOptions = (options: unknown): string => {
+  if (!options || typeof options !== "object") return "";
+  return Object.entries(options as Record<string, unknown>)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(" · ");
+};
+
+function OrderItemsList({ items }: { items: OrderItem[] }) {
+  if (!items?.length) {
+    return <p className="text-xs text-gray-400 italic">No item details available</p>;
+  }
+  return (
+    <div className="rounded-xl border border-gray-100 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50/70 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            <th className="py-2 pl-3 pr-2">Item</th>
+            <th className="py-2 px-2 text-right whitespace-nowrap">Qty</th>
+            <th className="py-2 px-2 text-right whitespace-nowrap">Price</th>
+            <th className="py-2 pr-3 pl-2 text-right whitespace-nowrap">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {items.map((it, idx) => {
+            const qty = Number(it.quantity || 0);
+            const price = typeof it.price === "string" ? Number(it.price) : Number(it.price || 0);
+            const specs = formatItemOptions(it.options);
+            return (
+              <tr key={it.id ?? `${it.name}-${idx}`}>
+                <td className="py-2.5 pl-3 pr-2">
+                  <p className="font-semibold text-gray-800 leading-snug">{it.name}</p>
+                  {specs ? <p className="text-[11px] text-gray-400 mt-0.5">{specs}</p> : null}
+                </td>
+                <td className="py-2.5 px-2 text-right text-gray-600 whitespace-nowrap align-top">{qty}</td>
+                <td className="py-2.5 px-2 text-right text-gray-600 whitespace-nowrap align-top">{formatMoney(price)}</td>
+                <td className="py-2.5 pr-3 pl-2 text-right font-bold text-gray-900 whitespace-nowrap align-top">
+                  {formatMoney(qty * (Number.isFinite(price) ? price : 0))}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 const formatOrderId = (id: string) => {
   if (id.length <= 14) return id;
   return `${id.slice(0, 8)}…${id.slice(-4)}`;
@@ -357,9 +405,11 @@ export default function OrdersPage() {
       return;
     }
 
-    const email = session?.user?.email?.trim();
-    if (!email) {
-      setReportError("Your account email is missing. Please log in again.");
+    // session.user.email can hold a phone number when the account signed in via
+    // phone OTP and has no email on file — prefer the order's own email instead.
+    const email = (reportOrder.customerEmail || reportOrder.shippingEmail || session?.user?.email || "").trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setReportError("We couldn't find a valid email on your account. Please update your profile email and try again.");
       return;
     }
 
@@ -496,136 +546,79 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
-            {/* Desktop table */}
-            <div className="hidden lg:block bg-white rounded-2xl border border-gray-150/80 shadow-sm overflow-hidden">
-              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-150/80 bg-gray-50/50 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-base font-extrabold text-gray-900">Order History</h3>
-                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-100">
-                  Showing {paginatedOrders.length ? (currentPage - 1) * ORDERS_PER_PAGE + 1 : 0}-
-                  {(currentPage - 1) * ORDERS_PER_PAGE + paginatedOrders.length} of {orders.length} order{orders.length === 1 ? "" : "s"}
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-[920px] w-full divide-y divide-gray-100">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      <th className="px-5 py-4 w-[22%]">Order ID</th>
-                      <th className="px-4 py-4 w-[14%]">Order Date</th>
-                      <th className="px-4 py-4 w-[12%]">Total</th>
-                      <th className="px-4 py-4 w-[14%]">Status</th>
-                      <th className="px-4 py-4 w-[12%]">Payment</th>
-                      <th className="px-5 py-4 text-right w-[26%]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {paginatedOrders.map((o) => (
-                      <tr key={o.id} className="hover:bg-blue-50/20 transition-colors align-top">
-                        <td className="px-5 py-4">
-                          <div
-                            className="font-mono text-sm font-bold text-gray-900 truncate max-w-[220px]"
-                            title={o.id}
-                          >
-                            <span className="text-blue-900">#</span>
-                            {formatOrderId(o.id)}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1.5 font-medium">
-                            {o.items?.length || 0} product{o.items?.length === 1 ? "" : "s"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm font-semibold text-gray-700 whitespace-nowrap">{formatDate(o.createdAt)}</td>
-                        <td className="px-4 py-4 text-sm font-extrabold text-gray-900 whitespace-nowrap">{formatMoney(o.totalAmount)}</td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-bold shadow-sm whitespace-nowrap ${statusStyles(o.status)}`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5" />
-                            {String(o.status || "PENDING")}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-sm">
-                          <div className="font-bold text-gray-800 uppercase tracking-wide text-xs">{o.paymentMethod || "-"}</div>
-                          <div className="text-[11px] text-gray-400 mt-1 font-semibold">{o.paymentStatus || "-"}</div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openReportModal(o)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-[11px] transition-all active:scale-95"
-                            >
-                              <AlertCircle size={14} /> Report Issue
-                            </button>
-                            {/* <button
-                              type="button"
-                              onClick={() => setActiveInvoiceOrder(o)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-[11px] transition-all shadow-sm active:scale-95"
-                            >
-                              <Eye size={14} /> Invoice
-                            </button> */}
-                            {/* <button
-                              type="button"
-                              onClick={() => downloadInvoice(o)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-[11px] transition-all shadow-lg shadow-blue-900/10 active:scale-95"
-                            >
-                              <Download size={14} /> PDF
-                            </button> */}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="text-base font-extrabold text-gray-900">Order History</h3>
+              <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-100">
+                Showing {paginatedOrders.length ? (currentPage - 1) * ORDERS_PER_PAGE + 1 : 0}-
+                {(currentPage - 1) * ORDERS_PER_PAGE + paginatedOrders.length} of {orders.length} order{orders.length === 1 ? "" : "s"}
               </div>
             </div>
 
-            {/* Mobile / tablet cards */}
-            <div className="lg:hidden grid grid-cols-1 gap-4">
+            {/* Order cards */}
+            <div className="grid grid-cols-1 gap-4">
               {paginatedOrders.map((o) => (
-                <div key={o.id} className="bg-white rounded-2xl border border-gray-150/80 shadow-sm p-5 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
+                <div key={o.id} className="bg-white rounded-2xl border border-gray-150/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Header */}
+                  <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-extrabold text-gray-900 font-mono truncate" title={o.id}>
-                        #{formatOrderId(o.id)}
+                        <span className="text-blue-900">#</span>
+                        {formatOrderId(o.id)}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1.5 font-semibold">{formatDate(o.createdAt)} · {o.items?.length || 0} items</p>
+                      <p className="text-xs text-gray-400 mt-1.5 font-semibold">
+                        {formatDate(o.createdAt)} · {o.items?.length || 0} item{o.items?.length === 1 ? "" : "s"}
+                      </p>
                     </div>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm ${statusStyles(o.status)}`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-bold shadow-sm whitespace-nowrap ${statusStyles(o.status)}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5" />
                       {String(o.status || "PENDING")}
                     </span>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Amount</p>
-                      <p className="mt-1.5 font-extrabold text-blue-900">{formatMoney(o.totalAmount)}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Payment</p>
-                      <p className="mt-1.5 font-bold text-gray-900 text-xs uppercase">{o.paymentMethod || "-"}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 font-semibold">{o.paymentStatus || "-"}</p>
-                    </div>
+                  {/* Items */}
+                  <div className="px-5 py-4">
+                    <OrderItemsList items={o.items} />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openReportModal(o)}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-all active:scale-95"
-                    >
-                      <AlertCircle size={14} /> Report Issue
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveInvoiceOrder(o)}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
-                    >
-                      <Eye size={14} /> View Invoice
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => downloadInvoice(o)}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
-                    >
-                      <Download size={14} /> Download
-                    </button>
+                  {/* Footer: totals + actions */}
+                  <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/40 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-6">
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total</p>
+                        <p className="mt-1 font-extrabold text-blue-900">{formatMoney(o.totalAmount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Payment</p>
+                        <p className="mt-1 font-bold text-gray-800 text-xs uppercase">
+                          {o.paymentMethod || "-"}{" "}
+                          <span className="text-gray-400 font-semibold normal-case">({o.paymentStatus || "-"})</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openReportModal(o)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-all active:scale-95"
+                      >
+                        <AlertCircle size={14} /> Report Issue
+                      </button>
+                      {/* <button
+                        type="button"
+                        onClick={() => setActiveInvoiceOrder(o)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition-all shadow-sm active:scale-95"
+                      >
+                        <Eye size={14} /> Invoice
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadInvoice(o)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/10 active:scale-95"
+                      >
+                        <Download size={14} /> Download
+                      </button> */}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -651,8 +644,8 @@ export default function OrdersPage() {
                       onClick={() => setCurrentPage(p)}
                       aria-current={p === currentPage ? "page" : undefined}
                       className={`inline-flex items-center justify-center w-9 h-9 rounded-xl font-bold text-sm transition-all ${p === currentPage
-                          ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20"
-                          : "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                        ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20"
+                        : "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
                         }`}
                     >
                       {p}

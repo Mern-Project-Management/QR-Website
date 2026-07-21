@@ -540,6 +540,11 @@ export default function DashboardPage() {
   const handleToggleDnd = async () => {
     if (!selectedQR) return;
 
+    if (dndEnabled && dndUntil && new Date(dndUntil).getTime() <= Date.now()) {
+      alert("DND active-until date must be in the future.");
+      return;
+    }
+
     const accessToken = (session as unknown as { accessToken?: string | null })?.accessToken || null;
     if (!accessToken) return;
 
@@ -1296,6 +1301,13 @@ function EditContactModal({
             {/* Owner Info */}
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Owner Information</h4>
+              <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs sm:text-sm text-blue-800">
+                Want to change the email or mobile number on this QR? Contact{" "}
+                <a href="mailto:support@odokho.com" className="font-semibold underline underline-offset-2">
+                  support@odokho.com
+                </a>
+                .
+              </div>
               <div className={FORM_GRID_2}>
                 <div className={FORM_FIELD}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
@@ -1668,6 +1680,7 @@ function DndModal({
                 <input
                   type="datetime-local"
                   value={dndUntil}
+                  min={new Date().toISOString().slice(0, 16)}
                   onChange={(e) => setDndUntil(e.target.value)}
                   className="w-full min-w-0 max-w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
                 />
